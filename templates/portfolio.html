@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeminiRAT - Framework de Simulação de Ameaças</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --primary-color: #1f1f1f;
+            --secondary-color: #2a2a2a;
+            --accent-color: #bb86fc;
+            --text-color: #e0e0e0;
+            --text-muted: #888;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        section {
+            padding: 80px 0;
+            border-bottom: 1px solid var(--secondary-color);
+        }
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 120px 0;
+            background: linear-gradient(rgba(18, 18, 18, 0.8), rgba(18, 18, 18, 1)), url('https://www.transparenttextures.com/patterns/cubes.png' );
+        }
+        .hero h1 {
+            font-size: 4rem;
+            margin-bottom: 10px;
+            color: #fff;
+            font-weight: 700;
+        }
+        .hero .subtitle {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-bottom: 30px;
+        }
+        .hero .button {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: var(--accent-color);
+            color: #000;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 0 10px;
+            transition: transform 0.2s;
+        }
+        .hero .button:hover {
+            transform: translateY(-3px);
+        }
+        .hero .button.secondary {
+            background-color: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+        }
+        /* About Section */
+        .about-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+        .about-content .text { flex: 1; }
+        .about-content .diagram { flex: 1; background-color: var(--primary-color); border: 1px solid var(--secondary-color); padding: 20px; border-radius: 8px; text-align: center; font-family: 'Courier New', Courier, monospace; }
+        .diagram-box { border: 1px solid var(--text-muted); padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .arrow { color: var(--accent-color); font-weight: bold; margin: 5px 0; }
+
+        /* Features Section */
+        .section-title { text-align: center; font-size: 2.5rem; margin-bottom: 50px; }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+        .feature-card {
+            background-color: var(--primary-color);
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid var(--secondary-color);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .feature-card .icon { font-size: 3rem; color: var(--accent-color); margin-bottom: 20px; }
+        .feature-card h3 { font-size: 1.5rem; margin-bottom: 15px; }
+
+        /* Gallery Section */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .gallery-item { background-color: #000; border-radius: 8px; overflow: hidden; border: 1px solid var(--secondary-color); }
+        .gallery-item img { width: 100%; height: auto; display: block; }
+        .gallery-item p { padding: 15px; margin: 0; background-color: var(--primary-color); font-weight: bold; }
+
+        /* Tech Stack Section */
+        .tech-stack { text-align: center; }
+        .tech-logos { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 40px; margin-top: 40px; }
+        .tech-logo { font-size: 1.2rem; font-weight: bold; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            background-color: var(--primary-color);
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <section class="hero">
+        <div class="container">
+            <h1>GeminiRAT</h1>
+            <p class="subtitle">Um Framework de Simulação de Ameaças e Red Team</p>
+            <div>
+                <a href="#features" class="button">Ver Funcionalidades</a>
+                <a href="/?token=maria" class="button secondary">Acessar Painel</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="container">
+        <h2 class="section-title">Arquitetura de Comando e Controle Moderna</h2>
+        <div class="about-content">
+            <div class="text">
+                <p>O GeminiRAT foi projetado com uma filosofia de múltiplos estágios, inspirada em frameworks de ataque profissionais. A arquitetura separa a inteligência da execução, garantindo flexibilidade, furtividade e resiliência.</p>
+                <p>O sistema é composto por um servidor C2 central, um Agente principal inteligente que atua como "caçador" e orquestrador, e Drones leves e descartáveis que são implantados nos alvos para execução de tarefas, formando uma botnet controlada e eficaz.</p>
+            </div>
+            <div class="diagram">
+                <div class="diagram-box">Operador</div>
+                <div class="arrow">↓</div>
+                <div class="diagram-box" style="border-color: var(--accent-color);">Servidor C2 (Python/Flask)</div>
+                <div class="arrow">↓ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ↓</div>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1;">
+                        <div class="diagram-box">Agente Gemini (Cérebro)</div>
+                        <div class="arrow">↓</div>
+                        <div class="diagram-box">Worm-Mode</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="diagram-box">Drone (Soldado)</div>
+                        <div class="arrow">↓</div>
+                        <div class="diagram-box">Execução de Comandos</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" style="background-color: var(--primary-color);">
+        <div class="container">
+            <h2 class="section-title">Funcionalidades Principais</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="icon">🎯</div>
+                    <h3>Módulo de Exploração</h3>
+                    <p>Capacidade de varredura e exploração automática de alvos, utilizando um mapa de vulnerabilidades customizável para implantar drones em serviços vulneráveis (vsFTPd, Shellshock, etc.).</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🧩</div>
+                    <h3>Implantes Multi-Estágio</h3>
+                    <p>Utiliza um Agente principal para orquestrar ataques e implantar Drones leves e especializados, otimizando a furtividade e a performance em alvos Linux e Windows.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🛡️</div>
+                    <h3>Comunicação Segura</h3>
+                    <p>Comunicação criptografada com AES-GCM, autenticação de agentes via HMAC e ofuscação de endpoints para evadir detecção por scanners e analistas de rede.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🤖</div>
+                    <h3>Análise Tática com IA</h3>
+                    <p>Integração com a API do Google Gemini para fornecer análises táticas e recomendações de próximos passos com base nos dados do alvo comprometido.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="gallery" class="container">
+        <h2 class="section-title">Galeria de Comandos</h2>
+        <div class="gallery-grid">
+            <div class="gallery-item">
+                <!-- Substitua 'URL_DO_SEU_GIF_OU_IMAGEM' por um link para uma imagem/gif -->
+                <img src="https://i.imgur.com/your_image_placeholder.gif" alt="Painel de Situação do Modo Worm">
+                <p>Painel de Situação do Modo Worm</p>
+            </div>
+            <div class="gallery-item">
+                <img src="https://i.imgur.com/your_image_placeholder.gif" alt="Resultado de Shell Remoto">
+                <p>Resultado de Shell Remoto</p>
+            </div>
+            <div class="gallery-item">
+                <img src="https://i.imgur.com/your_image_placeholder.gif" alt="Keylogger em Ação">
+                <p>Keylogger em Ação</p>
+            </div>
+             <div class="gallery-item">
+                <img src="https://i.imgur.com/your_image_placeholder.gif" alt="Roubo de Credenciais">
+                <p>Roubo de Credenciais</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="tech" class="tech-stack" style="background-color: var(--primary-color );">
+        <div class="container">
+            <h2 class="section-title">Stack Tecnológico</h2>
+            <div class="tech-logos">
+                <span class="tech-logo">Python</span>
+                <span class="tech-logo">Flask</span>
+                <span class="tech-logo">SQLite</span>
+                <span class="tech-logo">JavaScript</span>
+                <span class="tech-logo">Socket.IO</span>
+                <span class="tech-logo">Shell Script</span>
+                <span class="tech-logo">PyInstaller</span>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>Desenvolvido por Whx4mi</p>
+            <p>Projeto de Conclusão de Curso em Segurança da Informação - 2025</p>
+        </div>
+    </footer>
+
+</body>
+</html>

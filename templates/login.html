@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeminiRAT · Acesso</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/c2-theme.css') }}">
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Card central ── */
+  .login-wrap {
+    width: 100%;
+    max-width: 380px;
+    padding: 0 16px;
+  }
+
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 36px 32px 28px;
+    box-shadow: 0 0 60px rgba(0,0,0,.6), 0 0 30px rgba(0,212,255,.04);
+  }
+
+  /* ── Header ── */
+  .login-header { text-align: center; margin-bottom: 32px; }
+
+  .login-logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--cyan);
+    text-shadow: 0 0 20px var(--cyan-dim), 0 0 40px rgba(0,212,255,.15);
+    text-transform: uppercase;
+    animation: logoPulse 4s ease-in-out infinite;
+  }
+  @keyframes logoPulse {
+    0%, 100% { text-shadow: 0 0 20px var(--cyan-dim), 0 0 40px rgba(0,212,255,.15); }
+    50%       { text-shadow: 0 0 28px var(--cyan-dim), 0 0 55px rgba(0,212,255,.25); }
+  }
+
+  .login-sub {
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* ── Divider ── */
+  .login-div {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan-dim), transparent);
+    margin-bottom: 28px;
+  }
+
+  /* ── Form ── */
+  .login-form { display: flex; flex-direction: column; gap: 18px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+
+  .input-wrap { position: relative; }
+  .input-prefix {
+    position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--cyan-dim); font-size: 14px;
+    pointer-events: none;
+  }
+  .input-wrap input {
+    padding-left: 28px;
+  }
+
+  /* ── Button ── */
+  .btn-login {
+    margin-top: 6px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--cyan-dim);
+    border-radius: 4px;
+    color: var(--cyan);
+    font-family: var(--font);
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    padding: 11px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .btn-login::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,.07), transparent);
+    transform: translateX(-100%);
+    transition: transform .5s;
+  }
+  .btn-login:hover::before { transform: translateX(100%); }
+  .btn-login:hover {
+    border-color: var(--cyan);
+    box-shadow: 0 0 18px rgba(0,212,255,.2);
+  }
+  .btn-login:disabled { opacity: .45; cursor: default; }
+
+  /* ── Error ── */
+  .login-error {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--red);
+    text-transform: uppercase;
+    text-align: center;
+    min-height: 14px;
+  }
+
+  /* ── Footer ── */
+  .login-footer {
+    position: fixed;
+    bottom: 16px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  /* ── Shake animation ── */
+  .shake { animation: shake .45s ease; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-7px); }
+    40% { transform: translateX(7px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-card" id="login-card">
+    <div class="login-header">
+      <div class="login-logo">GeminiRAT</div>
+      <div class="login-sub">Remote Access Framework</div>
+    </div>
+
+    <div class="login-div"></div>
+
+    <form id="login-form" class="login-form">
+      <div class="field">
+        <label>Operador</label>
+        <div class="input-wrap">
+          <span class="input-prefix">›</span>
+          <input type="text" id="username" name="username" placeholder="usuário" autocomplete="off" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Chave de Acesso</label>
+        <div class="input-wrap">
+          <span class="input-prefix">›</span>
+          <input type="password" id="password" name="password" placeholder="senha" required>
+        </div>
+      </div>
+
+      <div class="login-error" id="error-message"></div>
+
+      <button type="submit" class="btn-login" id="btn-login">Autenticar</button>
+    </form>
+  </div>
+</div>
+
+<footer class="login-footer">© 2025–2026 GeminiRAT · Techvel Consulting</footer>
+
+<script>
+  document.getElementById('login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorEl  = document.getElementById('error-message');
+    const btn      = document.getElementById('btn-login');
+    const card     = document.getElementById('login-card');
+
+    errorEl.textContent = '';
+    btn.textContent = 'Autenticando...';
+    btn.disabled = true;
+
+    try {
+      const response = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json();
+
+      if (response.ok && data.status === 'success') {
+        btn.textContent = 'Acesso Autorizado ✓';
+        btn.style.borderColor = 'var(--green)';
+        btn.style.color = 'var(--green)';
+        setTimeout(() => window.location.href = '/', 400);
+      } else {
+        errorEl.textContent = data.message || 'Credenciais inválidas';
+        card.classList.add('shake');
+        setTimeout(() => card.classList.remove('shake'), 500);
+        btn.textContent = 'Autenticar';
+        btn.disabled = false;
+      }
+    } catch {
+      errorEl.textContent = 'Erro de conexão com o servidor';
+      btn.textContent = 'Autenticar';
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

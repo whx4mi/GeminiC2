@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Log - Gemini C2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/c2-theme.css') }}">
+    <style>
+        :root {
+            --bg:        #0a0c10;
+            --surface:   #111318;
+            --border:    #1e2130;
+            --border-hi: #2e3350;
+            --cyan:      #38bdf8;
+            --red:       #f87171;
+            --green:     #4ade80;
+            --yellow:    #f5c842;
+            --orange:    #fb923c;
+            --purple:    #a78bfa;
+            --gray-text: #8892a4;
+            --text:      #dde3f0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { font-size: 1.3rem; font-weight: 800; color: var(--cyan); letter-spacing: -.5px; }
+        header p  { font-size: .75rem; color: var(--gray-text); margin-top: 2px; }
+        .back-link {
+            font-size: .8rem; color: var(--cyan); text-decoration: none;
+            display: flex; align-items: center; gap: .4rem; opacity: .85; transition: opacity .15s;
+        }
+        .back-link:hover { opacity: 1; }
+
+        /* SUMMARY CARDS */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: .75rem;
+            padding: 1.25rem 1.5rem .5rem;
+        }
+        .summary-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: .9rem 1rem;
+            display: flex; align-items: center; gap: .75rem;
+        }
+        .summary-card .icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .85rem; flex-shrink: 0;
+        }
+        .summary-card .label { font-size: .68rem; color: var(--gray-text); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+        .summary-card .value { font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
+
+        /* FILTER BAR */
+        .filter-bar {
+            margin: 1rem 1.5rem .5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+        }
+        .filter-bar form {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: .75rem;
+            align-items: end;
+        }
+        .filter-group label {
+            display: block; font-size: .68rem; font-weight: 700;
+            color: var(--gray-text); text-transform: uppercase;
+            letter-spacing: .05em; margin-bottom: .3rem;
+        }
+        .filter-input {
+            width: 100%; background: var(--bg); border: 1px solid var(--border);
+            border-radius: 7px; padding: .5rem .75rem;
+            color: var(--text); font-size: .8rem; font-family: 'JetBrains Mono', monospace;
+            outline: none; transition: border-color .15s;
+        }
+        .filter-input:focus { border-color: var(--border-hi); }
+        .filter-input::placeholder { color: var(--gray-text); }
+        .btn-filter {
+            background: var(--cyan); color: #0a0c10; border: none;
+            border-radius: 7px; padding: .55rem 1rem;
+            font-size: .8rem; font-weight: 800; cursor: pointer;
+            font-family: 'Syne', sans-serif; transition: background .15s;
+            white-space: nowrap;
+        }
+        .btn-filter:hover { background: #7dd3fc; }
+        .btn-clear {
+            background: none; color: var(--gray-text); border: 1px solid var(--border);
+            border-radius: 7px; padding: .55rem 1rem;
+            font-size: .8rem; cursor: pointer; font-family: 'Syne', sans-serif;
+            transition: color .15s, border-color .15s;
+        }
+        .btn-clear:hover { color: var(--text); border-color: var(--border-hi); }
+
+        /* TABLE */
+        .panel {
+            margin: .5rem 1.5rem 2rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: .9rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .panel-header h2 { font-size: .95rem; font-weight: 700; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        thead tr { border-bottom: 1px solid var(--border); }
+        th {
+            text-align: left; padding: .6rem .9rem;
+            font-size: .66rem; font-weight: 700;
+            color: var(--gray-text); text-transform: uppercase;
+            letter-spacing: .06em; white-space: nowrap;
+        }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,.025); }
+        td { padding: .65rem .9rem; font-size: .8rem; vertical-align: middle; }
+        .no-results { padding: 3rem; text-align: center; color: var(--gray-text); font-size: .85rem; }
+
+        /* BADGES */
+        .badge {
+            display: inline-flex; align-items: center; gap: .3rem;
+            padding: .18rem .55rem; border-radius: 99px;
+            font-size: .68rem; font-weight: 700;
+            font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+        }
+        .badge-completed { background: rgba(74,222,128,.1);  color: #4ade80; border: 1px solid rgba(74,222,128,.25); }
+        .badge-failed    { background: rgba(248,113,113,.1); color: #f87171; border: 1px solid rgba(248,113,113,.25); }
+        .badge-timeout   { background: rgba(251,146,60,.1);  color: #fb923c; border: 1px solid rgba(251,146,60,.25); }
+        .badge-pending   { background: rgba(56,189,248,.1);  color: #38bdf8; border: 1px solid rgba(56,189,248,.25); }
+        .badge-in_progress { background: rgba(167,139,250,.1); color: #a78bfa; border: 1px solid rgba(167,139,250,.25); }
+
+        /* ARGS TRUNCATE */
+        .args-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-text); }
+
+        /* PAGINATION */
+        .pagination {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: .9rem 1.25rem;
+            border-top: 1px solid var(--border);
+            font-size: .8rem; color: var(--gray-text);
+        }
+        .pagination-links { display: flex; gap: .4rem; }
+        .page-btn {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 6px; padding: .3rem .65rem;
+            color: var(--text); font-size: .78rem; cursor: pointer;
+            text-decoration: none; transition: border-color .15s;
+        }
+        .page-btn:hover { border-color: var(--border-hi); }
+        .page-btn.active { background: rgba(56,189,248,.15); border-color: var(--cyan); color: var(--cyan); font-weight: 700; }
+        .page-btn.disabled { opacity: .35; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1><i class="fas fa-clipboard-list" style="color:rgba(56,189,248,.6);margin-right:.5rem;font-size:1rem;"></i>Audit Log</h1>
+        <p>Histórico completo de comandos emitidos por operadores</p>
+    </div>
+    <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+</header>
+
+<!-- Summary cards -->
+<div class="summary-grid">
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(56,189,248,.1);">
+            <i class="fas fa-terminal" style="color:var(--cyan);"></i>
+        </div>
+        <div>
+            <div class="label">Total (filtrado)</div>
+            <div class="value" style="color:var(--cyan);">{{ total }}</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(74,222,128,.1);">
+            <i class="fas fa-check-circle" style="color:var(--green);"></i>
+        </div>
+        <div>
+            <div class="label">Completados</div>
+            <div class="value" style="color:var(--green);">{{ rows | selectattr('status','eq','completed') | list | length }}</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(248,113,113,.1);">
+            <i class="fas fa-times-circle" style="color:var(--red);"></i>
+        </div>
+        <div>
+            <div class="label">Falhas</div>
+            <div class="value" style="color:var(--red);">{{ rows | selectattr('status','eq','failed') | list | length }}</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(251,146,60,.1);">
+            <i class="fas fa-clock" style="color:var(--orange);"></i>
+        </div>
+        <div>
+            <div class="label">Timeouts</div>
+            <div class="value" style="color:var(--orange);">{{ rows | selectattr('status','eq','timeout') | list | length }}</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(167,139,250,.1);">
+            <i class="fas fa-spinner" style="color:var(--purple);"></i>
+        </div>
+        <div>
+            <div class="label">Em progresso</div>
+            <div class="value" style="color:var(--purple);">{{ rows | selectattr('status','eq','in_progress') | list | length }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+    <form method="GET" action="/admin/audit">
+        <div class="filter-group">
+            <label>Operador</label>
+            <select name="operator" class="filter-input">
+                <option value="">Todos</option>
+                {% for op in operators %}
+                <option value="{{ op }}" {% if filters.operator == op %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Agente / Hostname</label>
+            <input type="text" name="agent" class="filter-input" placeholder="hostname ou ID" value="{{ filters.agent }}">
+        </div>
+        <div class="filter-group">
+            <label>Comando</label>
+            <select name="command" class="filter-input">
+                <option value="">Todos</option>
+                {% for cmd in commands %}
+                <option value="{{ cmd }}" {% if filters.command == cmd %}selected{% endif %}>{{ cmd }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Status</label>
+            <select name="status" class="filter-input">
+                <option value="">Todos</option>
+                <option value="completed"  {% if filters.status == 'completed'  %}selected{% endif %}>Completed</option>
+                <option value="failed"     {% if filters.status == 'failed'     %}selected{% endif %}>Failed</option>
+                <option value="timeout"    {% if filters.status == 'timeout'    %}selected{% endif %}>Timeout</option>
+                <option value="pending"    {% if filters.status == 'pending'    %}selected{% endif %}>Pending</option>
+                <option value="in_progress"{% if filters.status == 'in_progress'%}selected{% endif %}>In Progress</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>De</label>
+            <input type="date" name="date_from" class="filter-input" value="{{ filters.date_from }}">
+        </div>
+        <div class="filter-group">
+            <label>Até</label>
+            <input type="date" name="date_to" class="filter-input" value="{{ filters.date_to }}">
+        </div>
+        <div class="filter-group" style="display:flex;gap:.5rem;">
+            <button type="submit" class="btn-filter"><i class="fas fa-search mr-1"></i>Filtrar</button>
+            <a href="/admin/audit" class="btn-clear">Limpar</a>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="panel">
+    <div class="panel-header">
+        <h2><i class="fas fa-list-alt" style="color:rgba(56,189,248,.5);margin-right:.5rem;font-size:.85rem;"></i>
+            Registros
+            <span style="font-size:.75rem;font-weight:400;color:var(--gray-text);margin-left:.5rem;">
+                página {{ page }} de {{ total_pages }} &mdash; {{ total }} entradas
+            </span>
+        </h2>
+        <a href="/admin/users" class="back-link" style="font-size:.75rem;"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Operador</th>
+                    <th>Agente</th>
+                    <th>Comando</th>
+                    <th>Args</th>
+                    <th>Status</th>
+                    <th>Duração</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td class="mono" style="font-size:.72rem;color:var(--gray-text);white-space:nowrap;">
+                        {{ row.timestamp_issued[:19].replace('T', ' ') if row.timestamp_issued else '—' }}
+                    </td>
+                    <td>
+                        {% if row.issued_by %}
+                        <span class="mono" style="font-size:.78rem;color:var(--cyan);">{{ row.issued_by }}</span>
+                        {% else %}
+                        <span style="color:var(--gray-text);font-size:.75rem;font-style:italic;">agente</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.hostname %}
+                        <span class="mono" style="font-size:.78rem;">{{ row.hostname }}</span>
+                        {% if row.agent_user %}<span style="color:var(--gray-text);font-size:.7rem;"> / {{ row.agent_user }}</span>{% endif %}
+                        {% else %}
+                        <span class="mono" style="font-size:.7rem;color:var(--gray-text);">{{ row.agent_id[:12] if row.agent_id else '—' }}…</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="mono" style="font-size:.78rem;color:var(--text);font-weight:600;">{{ row.command }}</span>
+                    </td>
+                    <td class="args-cell mono" style="font-size:.72rem;" title="{{ row.args or '' }}">
+                        {{ row.args[:80] if row.args else '<span style="color:var(--border-hi);">—</span>' }}
+                    </td>
+                    <td>
+                        {% set s = row.status %}
+                        {% if s == 'completed' %}
+                            <span class="badge badge-completed"><i class="fas fa-check"></i>{{ s }}</span>
+                        {% elif s == 'failed' %}
+                            <span class="badge badge-failed"><i class="fas fa-times"></i>{{ s }}</span>
+                        {% elif s == 'timeout' %}
+                            <span class="badge badge-timeout"><i class="fas fa-clock"></i>{{ s }}</span>
+                        {% elif s == 'in_progress' %}
+                            <span class="badge badge-in_progress"><i class="fas fa-spinner fa-spin"></i>{{ s }}</span>
+                        {% else %}
+                            <span class="badge badge-pending"><i class="fas fa-hourglass-half"></i>{{ s }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="mono" style="font-size:.72rem;color:var(--gray-text);" id="dur-{{ loop.index }}"
+                        data-issued="{{ row.timestamp_issued or '' }}"
+                        data-updated="{{ row.updated_at or '' }}">
+                        —
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="no-results"><i class="fas fa-inbox" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>Nenhum registro encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        <span>Mostrando registros da página {{ page }} de {{ total_pages }}</span>
+        <div class="pagination-links">
+            <a href="?{{ request.query_string.decode().replace('page='+page|string, '') }}&page=1"
+               class="page-btn {% if page == 1 %}disabled{% endif %}"><i class="fas fa-angle-double-left"></i></a>
+            <a href="?{{ request.query_string.decode().replace('page='+page|string, '') }}&page={{ page - 1 }}"
+               class="page-btn {% if page == 1 %}disabled{% endif %}"><i class="fas fa-angle-left"></i></a>
+
+            {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+            <a href="?{{ request.query_string.decode().replace('page='+page|string, '') }}&page={{ p }}"
+               class="page-btn {% if p == page %}active{% endif %}">{{ p }}</a>
+            {% endfor %}
+
+            <a href="?{{ request.query_string.decode().replace('page='+page|string, '') }}&page={{ page + 1 }}"
+               class="page-btn {% if page == total_pages %}disabled{% endif %}"><i class="fas fa-angle-right"></i></a>
+            <a href="?{{ request.query_string.decode().replace('page='+page|string, '') }}&page={{ total_pages }}"
+               class="page-btn {% if page == total_pages %}disabled{% endif %}"><i class="fas fa-angle-double-right"></i></a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Calcula duracao de cada task (updated_at - timestamp_issued)
+    document.querySelectorAll('td[data-issued]').forEach(td => {
+        const issued  = td.dataset.issued;
+        const updated = td.dataset.updated;
+        if (!issued || !updated) return;
+        const diff = (new Date(updated) - new Date(issued)) / 1000;
+        if (isNaN(diff) || diff < 0) return;
+        if (diff < 60)        td.textContent = diff.toFixed(1) + 's';
+        else if (diff < 3600) td.textContent = (diff / 60).toFixed(1) + 'm';
+        else                  td.textContent = (diff / 3600).toFixed(1) + 'h';
+    });
+</script>
+</body>
+</html>

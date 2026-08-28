@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Usuários - Gemini C2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/c2-theme.css') }}">
+    <style>
+        :root {
+            --bg:        #0a0c10;
+            --surface:   #111318;
+            --border:    #1e2130;
+            --border-hi: #2e3350;
+            --yellow:    #f5c842;
+            --yellow-dim:#a88b2a;
+            --cyan:      #38bdf8;
+            --red:       #f87171;
+            --green:     #4ade80;
+            --gray-text: #8892a4;
+            --text:      #dde3f0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Syne', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* --- HEADER --- */
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { font-size: 1.3rem; font-weight: 800; color: var(--yellow); letter-spacing: -.5px; }
+        header p  { font-size: .75rem; color: var(--gray-text); margin-top: 2px; }
+        .back-link {
+            font-size: .8rem;
+            color: var(--cyan);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            opacity: .85;
+            transition: opacity .15s;
+        }
+        .back-link:hover { opacity: 1; }
+
+        /* --- SUMMARY CARDS --- */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: .75rem;
+            padding: 1.25rem 1.5rem .5rem;
+        }
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: .9rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+        }
+        .summary-card .icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .9rem;
+            flex-shrink: 0;
+        }
+        .summary-card .label { font-size: .7rem; color: var(--gray-text); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+        .summary-card .value { font-size: 1.5rem; font-weight: 800; line-height: 1.1; }
+
+        /* --- MAIN GRID --- */
+        main {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 1.25rem;
+            padding: 1.25rem 1.5rem 2rem;
+        }
+        @media (max-width: 900px) {
+            main { grid-template-columns: 1fr; }
+        }
+
+        /* --- PANEL --- */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: .9rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+        }
+        .panel-header h2 { font-size: .95rem; font-weight: 700; }
+        .panel-body { padding: 1.25rem; }
+
+        /* --- SEARCH --- */
+        .search-wrap { position: relative; }
+        .search-wrap i { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--gray-text); font-size: .8rem; pointer-events: none; }
+        #user-search {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: .55rem .75rem .55rem 2.1rem;
+            color: var(--text);
+            font-size: .8rem;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            transition: border-color .15s;
+        }
+        #user-search:focus { border-color: var(--border-hi); }
+        #user-search::placeholder { color: var(--gray-text); }
+
+        /* --- TABLE --- */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        thead tr { border-bottom: 1px solid var(--border); }
+        th {
+            text-align: left;
+            padding: .6rem .9rem;
+            font-size: .68rem;
+            font-weight: 700;
+            color: var(--gray-text);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            white-space: nowrap;
+        }
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background .1s;
+        }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,.025); }
+        td { padding: .7rem .9rem; font-size: .82rem; vertical-align: middle; }
+        td.mono { font-size: .78rem; }
+        .no-results { padding: 2rem; text-align: center; color: var(--gray-text); font-size: .85rem; }
+
+        /* --- ROLE BADGE --- */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .2rem .6rem;
+            border-radius: 99px;
+            font-size: .7rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+        }
+        .badge-admin    { background: rgba(248,113,113,.12); color: #f87171; border: 1px solid rgba(248,113,113,.25); }
+        .badge-operator { background: rgba(56,189,248,.12);  color: #38bdf8; border: 1px solid rgba(56,189,248,.25); }
+        .badge-observer { background: rgba(136,146,164,.12); color: #8892a4; border: 1px solid rgba(136,146,164,.25); }
+
+        /* --- YOU CHIP --- */
+        .you-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            background: rgba(245,200,66,.1);
+            color: var(--yellow);
+            border: 1px solid rgba(245,200,66,.25);
+            border-radius: 99px;
+            padding: .15rem .5rem;
+            font-size: .65rem;
+            font-weight: 700;
+            margin-left: .4rem;
+        }
+
+        /* --- DELETE BTN --- */
+        .btn-delete {
+            background: none;
+            border: none;
+            color: var(--gray-text);
+            cursor: pointer;
+            padding: .3rem .5rem;
+            border-radius: 6px;
+            transition: color .15s, background .15s;
+            font-size: .85rem;
+        }
+        .btn-delete:hover { color: var(--red); background: rgba(248,113,113,.1); }
+
+        /* --- FORM --- */
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            font-size: .75rem;
+            font-weight: 700;
+            color: var(--gray-text);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: .4rem;
+        }
+        .form-control {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: .6rem .85rem;
+            color: var(--text);
+            font-size: .85rem;
+            font-family: 'Syne', sans-serif;
+            outline: none;
+            transition: border-color .15s;
+        }
+        .form-control:focus { border-color: var(--yellow-dim); }
+        .form-control.mono-input { font-family: 'JetBrains Mono', monospace; }
+
+        /* --- PASSWORD STRENGTH --- */
+        .strength-bar-wrap {
+            margin-top: .4rem;
+            display: flex;
+            gap: .25rem;
+        }
+        .strength-seg {
+            height: 3px;
+            flex: 1;
+            border-radius: 99px;
+            background: var(--border);
+            transition: background .2s;
+        }
+        .strength-label {
+            margin-top: .3rem;
+            font-size: .7rem;
+            color: var(--gray-text);
+            min-height: 1em;
+            transition: color .2s;
+        }
+
+        /* --- SUBMIT BTN --- */
+        .btn-submit {
+            width: 100%;
+            background: var(--yellow);
+            color: #0a0c10;
+            border: none;
+            border-radius: 8px;
+            padding: .7rem 1rem;
+            font-size: .9rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            transition: background .15s, transform .1s;
+            font-family: 'Syne', sans-serif;
+            margin-top: 1.25rem;
+        }
+        .btn-submit:hover   { background: #f9d76a; }
+        .btn-submit:active  { transform: scale(.98); }
+        .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* --- ROLE INFO BOX --- */
+        .role-info {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: .75rem .9rem;
+            font-size: .75rem;
+            color: var(--gray-text);
+            margin-top: .4rem;
+            line-height: 1.6;
+            display: none;
+        }
+        .role-info.visible { display: block; }
+        .role-info strong { color: var(--text); }
+
+        /* --- FADE ROW --- */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .new-row { animation: fadeIn .3s ease; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1><i class="fas fa-users-cog" style="color:var(--yellow-dim);margin-right:.5rem;font-size:1rem;"></i>Gerenciamento de Operadores</h1>
+        <p>Adicione, remova e visualize operadores do C2</p>
+    </div>
+    <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+</header>
+
+<!-- Summary cards -->
+<div class="summary-grid">
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(245,200,66,.1);">
+            <i class="fas fa-users" style="color:var(--yellow);"></i>
+        </div>
+        <div>
+            <div class="label">Total</div>
+            <div class="value" id="summary-total">{{ users | length }}</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(248,113,113,.1);">
+            <i class="fas fa-user-shield" style="color:var(--red);"></i>
+        </div>
+        <div>
+            <div class="label">Admins</div>
+            <div class="value" id="summary-admins" style="color:var(--red);">{{ users | selectattr('role','eq','Administrator') | list | length }}</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(56,189,248,.1);">
+            <i class="fas fa-user-cog" style="color:var(--cyan);"></i>
+        </div>
+        <div>
+            <div class="label">Operadores</div>
+            <div class="value" id="summary-operators" style="color:var(--cyan);">{{ users | selectattr('role','eq','Operator') | list | length }}</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="icon" style="background:rgba(136,146,164,.1);">
+            <i class="fas fa-user-secret" style="color:var(--gray-text);"></i>
+        </div>
+        <div>
+            <div class="label">Observadores</div>
+            <div class="value" id="summary-observers" style="color:var(--gray-text);">{{ users | selectattr('role','eq','Observer') | list | length }}</div>
+        </div>
+    </div>
+</div>
+
+<main>
+    <!-- Tabela de usuários -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2><i class="fas fa-list" style="color:var(--yellow-dim);margin-right:.5rem;font-size:.85rem;"></i>Usuários Atuais</h2>
+            <div class="search-wrap" style="width:220px;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="user-search" placeholder="Filtrar usuários...">
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuário</th>
+                        <th>Função</th>
+                        <th>Criado em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="user-list-body">
+                    {% for user in users %}
+                    <tr data-username="{{ user.username }}" data-role="{{ user.role }}">
+                        <td class="mono" style="color:var(--gray-text);">{{ user.id }}</td>
+                        <td>
+                            <span class="mono" style="font-weight:600;">{{ user.username }}</span>
+                            {% if user.id == current_user_id %}
+                            <span class="you-chip"><i class="fas fa-circle" style="font-size:.4rem;"></i> você</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.role == 'Administrator' %}
+                            <span class="badge badge-admin"><i class="fas fa-shield-alt"></i> {{ user.role }}</span>
+                            {% elif user.role == 'Operator' %}
+                            <span class="badge badge-operator"><i class="fas fa-cog"></i> {{ user.role }}</span>
+                            {% else %}
+                            <span class="badge badge-observer"><i class="fas fa-eye"></i> {{ user.role }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="mono" style="color:var(--gray-text);font-size:.75rem;">
+                            {{ user.created_at.split('T')[0] if 'T' in user.created_at else user.created_at.split(' ')[0] }}
+                        </td>
+                        <td>
+                            {% if user.id != current_user_id %}
+                            <button class="btn-delete" onclick="deleteUser({{ user.id }}, '{{ user.username }}')" title="Deletar {{ user.username }}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            {% else %}
+                            <span style="color:var(--border-hi);font-size:.8rem;" title="Você não pode deletar sua própria conta">
+                                <i class="fas fa-ban"></i>
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="no-results">Nenhum usuário cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div id="no-results-msg" class="no-results" style="display:none;">Nenhum usuário encontrado para "<span id="search-term"></span>".</div>
+        </div>
+    </div>
+
+    <!-- Formulário de adição -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2><i class="fas fa-user-plus" style="color:var(--yellow-dim);margin-right:.5rem;font-size:.85rem;"></i>Adicionar Usuário</h2>
+        </div>
+        <div class="panel-body">
+            <form id="add-user-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="username">Nome de Usuário</label>
+                    <input type="text" id="username" name="username" required
+                           class="form-control mono-input" placeholder="ex: operador01" autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" required
+                           class="form-control" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                    <div class="strength-bar-wrap">
+                        <div class="strength-seg" id="seg1"></div>
+                        <div class="strength-seg" id="seg2"></div>
+                        <div class="strength-seg" id="seg3"></div>
+                        <div class="strength-seg" id="seg4"></div>
+                    </div>
+                    <div class="strength-label" id="strength-label"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">Confirmar Senha</label>
+                    <input type="password" id="confirm-password" required
+                           class="form-control" placeholder="Repita a senha">
+                    <div id="confirm-feedback" style="font-size:.7rem;margin-top:.3rem;min-height:1em;"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="role">Função (Role)</label>
+                    <select id="role" name="role" required class="form-control" onchange="updateRoleInfo(this.value)">
+                        <option value="">Selecione uma função...</option>
+                        <option value="Observer">Observador</option>
+                        <option value="Operator">Operador</option>
+                        <option value="Administrator">Administrador</option>
+                    </select>
+                    <div class="role-info" id="role-info"></div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="submit-btn">
+                    <i class="fas fa-user-plus"></i> Adicionar Usuário
+                </button>
+            </form>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<script>
+    const notyf = new Notyf({
+        duration: 5000,
+        position: { x: 'right', y: 'top' },
+        types: [
+            { type: 'success', background: '#22c55e', icon: false },
+            { type: 'error',   background: '#ef4444', icon: false }
+        ]
+    });
+
+    // --- FILTRO DE BUSCA ---
+    document.getElementById('user-search').addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#user-list-body tr[data-username]');
+        let visible = 0;
+        rows.forEach(row => {
+            const name = row.dataset.username.toLowerCase();
+            const role = row.dataset.role.toLowerCase();
+            const match = name.includes(q) || role.includes(q);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        const noMsg = document.getElementById('no-results-msg');
+        document.getElementById('search-term').textContent = this.value;
+        noMsg.style.display = (visible === 0 && q) ? 'block' : 'none';
+    });
+
+    // --- FORÇA DE SENHA ---
+    document.getElementById('password').addEventListener('input', function() {
+        const val = this.value;
+        let score = 0;
+        if (val.length >= 6)  score++;
+        if (val.length >= 10) score++;
+        if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+        if (/\d/.test(val) && /[^a-zA-Z0-9]/.test(val)) score++;
+
+        const colors = ['', '#ef4444', '#f97316', '#eab308', '#4ade80'];
+        const labels = ['', 'Muito fraca', 'Fraca', 'Moderada', 'Forte'];
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById('seg' + i).style.background = i <= score ? colors[score] : 'var(--border)';
+        }
+        const lbl = document.getElementById('strength-label');
+        lbl.textContent = val ? labels[score] : '';
+        lbl.style.color  = val ? colors[score] : 'var(--gray-text)';
+
+        checkConfirm();
+    });
+
+    // --- CONFIRMAÇÃO DE SENHA ---
+    document.getElementById('confirm-password').addEventListener('input', checkConfirm);
+    function checkConfirm() {
+        const pw  = document.getElementById('password').value;
+        const cpw = document.getElementById('confirm-password').value;
+        const fb  = document.getElementById('confirm-feedback');
+        if (!cpw) { fb.textContent = ''; return; }
+        if (pw === cpw) {
+            fb.textContent = '✓ Senhas conferem';
+            fb.style.color = '#4ade80';
+        } else {
+            fb.textContent = '✗ As senhas não conferem';
+            fb.style.color = '#f87171';
+        }
+    }
+
+    // --- DESCRIÇÃO DA ROLE ---
+    const roleDescriptions = {
+        'Observer':      '<strong>Observador:</strong> Somente leitura. Pode visualizar agentes e resultados, mas não pode executar comandos.',
+        'Operator':      '<strong>Operador:</strong> Pode executar a maioria dos comandos nos agentes, mas não pode usar ações destrutivas ou gerenciar usuários.',
+        'Administrator': '<strong>Administrador:</strong> Controle total. Pode executar qualquer comando, incluindo ações destrutivas, e gerenciar outros usuários.'
+    };
+    function updateRoleInfo(role) {
+        const box = document.getElementById('role-info');
+        if (roleDescriptions[role]) {
+            box.innerHTML = roleDescriptions[role];
+            box.classList.add('visible');
+        } else {
+            box.classList.remove('visible');
+        }
+    }
+
+    // --- ADICIONAR USUÁRIO ---
+    document.getElementById('add-user-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const pw  = document.getElementById('password').value;
+        const cpw = document.getElementById('confirm-password').value;
+        if (pw !== cpw) {
+            notyf.error('As senhas não conferem.');
+            return;
+        }
+        if (pw.length < 6) {
+            notyf.error('A senha precisa ter pelo menos 6 caracteres.');
+            return;
+        }
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adicionando...';
+
+        const userData = {
+            username: document.getElementById('username').value,
+            password: pw,
+            role:     document.getElementById('role').value
+        };
+
+        fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                notyf.success(data.message);
+                addRowToTable(userData);
+                updateSummary(userData.role, +1);
+                this.reset();
+                document.getElementById('role-info').classList.remove('visible');
+                document.getElementById('strength-label').textContent = '';
+                document.getElementById('confirm-feedback').textContent = '';
+                for (let i = 1; i <= 4; i++) document.getElementById('seg' + i).style.background = 'var(--border)';
+            } else {
+                notyf.error(data.message || 'Erro desconhecido.');
+            }
+        })
+        .catch(() => notyf.error('Falha na comunicação com o servidor.'))
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Adicionar Usuário';
+        });
+    });
+
+    // Adiciona linha dinamicamente sem recarregar
+    function addRowToTable(user) {
+        const tbody = document.getElementById('user-list-body');
+        // Remove mensagem "nenhum usuário" se existir
+        const empty = tbody.querySelector('td[colspan]');
+        if (empty) empty.closest('tr').remove();
+
+        const badgeMap = {
+            'Administrator': `<span class="badge badge-admin"><i class="fas fa-shield-alt"></i> Administrator</span>`,
+            'Operator':      `<span class="badge badge-operator"><i class="fas fa-cog"></i> Operator</span>`,
+            'Observer':      `<span class="badge badge-observer"><i class="fas fa-eye"></i> Observer</span>`
+        };
+        const today = new Date().toISOString().split('T')[0];
+        const tr = document.createElement('tr');
+        tr.className = 'new-row';
+        tr.dataset.username = user.username;
+        tr.dataset.role = user.role;
+        tr.innerHTML = `
+            <td class="mono" style="color:var(--gray-text);">—</td>
+            <td><span class="mono" style="font-weight:600;">${user.username}</span></td>
+            <td>${badgeMap[user.role] || user.role}</td>
+            <td class="mono" style="color:var(--gray-text);font-size:.75rem;">${today}</td>
+            <td><span style="color:var(--gray-text);font-size:.75rem;">recarregue para gerir</span></td>`;
+        tbody.appendChild(tr);
+    }
+
+    // Atualiza contadores dos cards
+    function updateSummary(role, delta) {
+        const totalEl = document.getElementById('summary-total');
+        totalEl.textContent = parseInt(totalEl.textContent) + delta;
+        const map = {
+            'Administrator': 'summary-admins',
+            'Operator':      'summary-operators',
+            'Observer':      'summary-observers'
+        };
+        if (map[role]) {
+            const el = document.getElementById(map[role]);
+            el.textContent = parseInt(el.textContent) + delta;
+        }
+    }
+
+    // --- DELETAR USUÁRIO ---
+    function deleteUser(userId, username) {
+        if (!confirm(`Deletar permanentemente o usuário '${username}' (ID: ${userId})?`)) return;
+
+        fetch(`/api/users/${userId}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                notyf.success(data.message);
+                const row = document.querySelector(`#user-list-body tr[data-username="${username}"]`);
+                if (row) {
+                    updateSummary(row.dataset.role, -1);
+                    row.style.transition = 'opacity .3s';
+                    row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 300);
+                }
+            } else {
+                notyf.error(data.message || 'Erro desconhecido.');
+            }
+        })
+        .catch(() => notyf.error('Falha na comunicação com o servidor.'));
+    }
+</script>
+</body>
+</html>

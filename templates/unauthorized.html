@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 Forbidden</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Scanline effect */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 0, 0.03) 2px,
+                rgba(0, 255, 0, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .terminal {
+            width: 100%;
+            max-width: 720px;
+            padding: 2rem;
+            border: 1px solid #00ff0044;
+            background: rgba(0, 20, 0, 0.85);
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.1), inset 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #00ff0033;
+        }
+
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot-r { background: #ff5f57; }
+        .dot-y { background: #ffbd2e; }
+        .dot-g { background: #28ca42; }
+
+        .terminal-title {
+            margin-left: auto;
+            font-size: 0.7rem;
+            color: #00ff0066;
+            letter-spacing: 0.15em;
+        }
+
+        .line { margin-bottom: 0.4rem; font-size: 0.82rem; line-height: 1.6; }
+        .line.red   { color: #ff3333; }
+        .line.dim   { color: #00ff0066; }
+        .line.white { color: #cccccc; }
+        .line.amber { color: #ffbd2e; }
+
+        .prompt::before { content: '$ '; color: #00ff0066; }
+
+        .blink {
+            display: inline-block;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        #ip-value      { color: #ff3333; font-weight: bold; }
+        #ua-value      { color: #ffbd2e; word-break: break-all; }
+        #time-value    { color: #00ff00; }
+        #country-value { color: #00ff00; }
+
+        .progress-bar {
+            height: 4px;
+            background: #001a00;
+            border: 1px solid #00ff0033;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #ff3333;
+            width: 0%;
+            animation: fill 4s linear forwards;
+        }
+        @keyframes fill { to { width: 100%; } }
+
+        .warning-box {
+            border: 1px solid #ff333344;
+            background: rgba(255, 0, 0, 0.05);
+            padding: 0.75rem 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+<div class="terminal">
+    <div class="terminal-header">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+        <span class="terminal-title">SECURITY MONITOR v2.1 — INTRUSION DETECTED</span>
+    </div>
+
+    <div class="line red">[ ALERT ] Unauthorized access attempt detected.</div>
+    <div class="line dim">──────────────────────────────────────────────────────</div>
+
+    <br>
+    <div class="line dim">Collecting connection metadata...</div>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+
+    <br>
+    <div class="line prompt">traceroute --resolve-names <span id="ip-value">...</span></div>
+    <div class="line dim" id="geo-line">Resolving geolocation...</div>
+
+    <br>
+    <div class="line white">CONNECTION DETAILS</div>
+    <div class="line dim">──────────────────────────────────────────────────────</div>
+    <div class="line">  Source IP      : <span id="ip-value2">Resolving...</span></div>
+    <div class="line">  Timestamp      : <span id="time-value">—</span></div>
+    <div class="line">  Location       : <span id="country-value">Resolving...</span></div>
+    <div class="line">  User-Agent     : <span id="ua-value">—</span></div>
+    <div class="line">  Request Path   : <span id="path-value" style="color:#ffbd2e">—</span></div>
+    <div class="line">  Protocol       : <span style="color:#00ff00">HTTPS/1.1</span></div>
+
+    <br>
+    <div class="warning-box">
+        <div class="line red">[ WARNING ] This access has been logged and reported.</div>
+        <div class="line red">[ WARNING ] Your connection details have been recorded.</div>
+        <div class="line amber">[ INFO    ] Unauthorized access to this system is a criminal</div>
+        <div class="line amber">            offense under applicable law.</div>
+    </div>
+
+    <br>
+    <div class="line dim">Incident ID: <span id="incident-id" style="color:#00ff0099"></span></div>
+    <div class="line dim">Status: <span style="color:#ff3333">LOGGED</span> <span class="blink">█</span></div>
+</div>
+
+<script>
+    // Gera um incident ID aleatório para parecer mais real
+    function randomHex(len) {
+        return [...Array(len)].map(() => Math.floor(Math.random()*16).toString(16)).join('').toUpperCase();
+    }
+    document.getElementById('incident-id').textContent =
+        `INC-${randomHex(4)}-${randomHex(4)}-${randomHex(8)}`;
+
+    // Timestamp atual
+    document.getElementById('time-value').textContent =
+        new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+
+    // Path atual
+    document.getElementById('path-value').textContent = window.location.pathname || '/';
+
+    // User-Agent
+    document.getElementById('ua-value').textContent = navigator.userAgent;
+
+    // Busca IP e geolocalização via API pública
+    fetch('https://ipapi.co/json/')
+        .then(r => r.json())
+        .then(data => {
+            const ip      = data.ip      || 'Unknown';
+            const city    = data.city    || '';
+            const region  = data.region  || '';
+            const country = data.country_name || 'Unknown';
+            const org     = data.org     || '';
+
+            document.getElementById('ip-value').textContent  = ip;
+            document.getElementById('ip-value2').textContent = ip;
+            document.getElementById('country-value').textContent =
+                [city, region, country].filter(Boolean).join(', ');
+            document.getElementById('geo-line').textContent =
+                `TRACE COMPLETE — ${org}`;
+        })
+        .catch(() => {
+            document.getElementById('ip-value').textContent  = 'Unavailable';
+            document.getElementById('ip-value2').textContent = 'Unavailable';
+            document.getElementById('country-value').textContent = 'Unavailable';
+            document.getElementById('geo-line').textContent  = 'TRACE COMPLETE';
+        });
+</script>
+</body>
+</html>

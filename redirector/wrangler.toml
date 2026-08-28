@@ -1,0 +1,14 @@
+name = "geminirat-redirector"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Variáveis de ambiente -- defina os valores reais no painel Cloudflare
+# (Workers > seu worker > Settings > Variables) ou via:
+#   wrangler secret put C2_ORIGIN
+#   wrangler secret put REDIRECT_SECRET
+#
+# NUNCA commite os valores reais aqui.
+
+[vars]
+# C2_ORIGIN      = "https://SEU_IP_C2:5000"   # defina como Secret no painel
+# REDIRECT_SECRET = "troque-por-string-aleatoria-longa"  # idem
