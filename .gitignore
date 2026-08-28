@@ -1,0 +1,97 @@
+# ==========================================
+# Credenciais e Ambiente
+# ==========================================
+.env
+profile.json
+
+# ==========================================
+# Certificados e Criptografia
+# ==========================================
+certs/
+*.pem
+*.crt
+*.key
+
+# ==========================================
+# Agente — sobe apenas o essencial
+# ==========================================
+agente/*
+!agente/agent.py
+!agente/agent_linux
+!agente/agent_tor.py
+
+# ==========================================
+# Payloads e Artefatos de Build
+# ==========================================
+payloads/
+updates/
+C2/
+.venv/
+*.spec
+.build_*/
+
+# ==========================================
+# Banco de Dados (gerado em runtime)
+# ==========================================
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# ==========================================
+# Diretórios Operacionais (runtime)
+# ==========================================
+downloads/
+keylogs/
+system_logs/
+
+# ==========================================
+# Logs
+# ==========================================
+*.log
+c2_operator_log.txt
+unauthorized_log.txt
+
+# ==========================================
+# Lab de Testes Local
+# ==========================================
+lab/
+
+# ==========================================
+# Cache Python
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ==========================================
+# Arquivos Locais / Não versionáveis
+# ==========================================
+backup/
+gui/
+Configuracoes-servidor/
+TESTES-ISOLADOS/
+
+# Temporários e rascunhos
+sigthief_bkp.py
+test_whitelist.py
+templates/paneldev.html
+agent_demo.py
+agente.py
+
+# Documentação e skills locais (geradas pelo Cowork/Claude)
+*.skill
+geminirat-assistant*.md
+geminirat-skill*.md
+*.pdf
+
+# Iscas / lures
+lvos.txt
+assinatura.html
+fivem.png
+pdf.png
+pdficon.png
+
+# Arquivos temporários do sistema de arquivos
+.fuse_hidden*
