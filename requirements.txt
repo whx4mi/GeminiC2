@@ -1,32 +1,5 @@
-# ── GeminiRAT C2 (dependências originais) ────────────────────────────────────
-Flask
-Flask-SocketIO
-requests
-python-dotenv
-pycryptodomex
-google-generativeai
-eventlet
-psutil
-opencv-python
-pycryptodome
-browser_cookie3
-Pillow
-questionary
-rich
-pyarmor
-pyinstaller
-pynput
-PySocks
-
-# ── Build Tools para Nuitka ───────────────────────────────────────────────────
-nuitka>=1.8.0      # Compilador Python (versão 1.8+ suporta --windows-console-mode)
-zstandard          # Compressor para Nuitka onefile (reduz tamanho)
-cffi               # Dependência de build para Nuitka
-
-# ── Cryptografia e Segurança ──────────────────────────────────────────────────
-cryptography       # Para operations de criptografia
-pycrypto           # Fallback legacy crypto
-
-# ── ReAct Pentest Agent (dependências novas) ──────────────────────────────────
-anthropic          # SDK oficial da Anthropic — cliente para a API do Claude
-mcp[cli]           # Model Context Protocol — servidor (FastMCP) + cliente stdio
+# Instalação completa e retrocompatível.
+# Para ambientes menores, instale diretamente um dos manifestos abaixo.
+-r requirements-server.txt
+-r requirements-builder.txt
+-r requirements-optional.txt

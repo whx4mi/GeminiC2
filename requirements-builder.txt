@@ -1,0 +1,20 @@
+# Builder e dependências empacotadas no agente Windows
+requests
+pycryptodomex
+psutil
+opencv-python
+browser_cookie3
+Pillow
+pywin32; platform_system == "Windows"
+questionary
+rich
+pyarmor
+pyinstaller
+pynput
+PySocks
+cryptography
+
+# Build alternativo com Nuitka
+nuitka>=1.8.0
+zstandard
+cffi

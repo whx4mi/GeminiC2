@@ -1,0 +1,7 @@
+# Servidor Flask, painel e protocolo Server-Agent
+Flask
+Flask-SocketIO
+requests
+python-dotenv
+pycryptodomex
+eventlet

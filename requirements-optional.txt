@@ -1,0 +1,4 @@
+# Integrações opcionais e ferramentas auxiliares
+google-generativeai
+anthropic
+mcp[cli]

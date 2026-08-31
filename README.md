@@ -5,7 +5,8 @@
 
 ![Version](https://img.shields.io/badge/version-6.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-green.svg)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey.svg)
+![Agent](https://img.shields.io/badge/agent-Windows-lightgrey.svg)
+![Server](https://img.shields.io/badge/server-Windows%20%7C%20Linux-lightgrey.svg)
 ![License](https://img.shields.io/badge/license-Educational-red.svg)
 ![Architecture](https://img.shields.io/badge/architecture-Polymorphic-purple.svg)
 
@@ -131,8 +132,9 @@
 
 ### Pré-requisitos
 
-- **Python 3.11+**
-- **Windows 10/11** (para compilação de agentes Windows)
+- **Python 3.11+** para o servidor; **Python 3.12 recomendado** para o Builder
+- **Windows 10/11** para executar e compilar o agente atual
+- O servidor Flask pode ser executado em Windows ou Linux
 - **Node.js + Wrangler** (para deploy do Redirector Cloudflare)
 - **Ambiente Virtual** (recomendado)
 
@@ -148,8 +150,8 @@ python -m venv C2
 C2\Scripts\activate        # Windows
 # source C2/bin/activate   # Linux
 
-# Instale as dependências
-pip install -r requirements.txt
+# Instale apenas as dependências do servidor
+pip install -r requirements-server.txt
 
 # Inicie o servidor
 python ServidorHomologacao.py
@@ -179,14 +181,23 @@ wrangler tail --format pretty
 ### Compilar um Agente
 
 ```bash
+pip install -r requirements-builder.txt
 python Builder.py
+```
+
+Para preparar servidor, Builder e integrações opcionais no mesmo ambiente,
+continue usando `pip install -r requirements.txt`.
+
+Valide os contratos entre servidor, agente, painel e banco antes de um build:
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
 ```
 ? URL do C2 (ou Redirector): https://geminirat-redirector.workers.dev
 ? Usar Cloudflare Worker como redirector? Yes
 ? CDN Token (REDIRECT_SECRET): meu_token_secreto
-? Plataforma Alvo: windows
 ? Tipo de Saída: executável
 ? Aplicar ofuscação? Yes
 ? Nome do arquivo: agent.exe
@@ -253,7 +264,11 @@ GeminiProject/
 ├── database.py                # Helpers SQLite (WAL mode, indexes)
 ├── Builder.py                 # Builder interativo de agentes
 ├── sigthief.py                # Roubo de assinatura digital (CarbonCopy)
-├── requirements.txt
+├── requirements.txt             # Instalação completa
+├── requirements-server.txt      # Servidor e painel
+├── requirements-builder.txt     # Builder e agente Windows
+├── requirements-optional.txt    # Integrações auxiliares
+├── tests/                       # Contratos automatizados da arquitetura
 │
 ├── agente/
 │   └── agent.py               # Template do agente (~2900 linhas)
@@ -331,7 +346,7 @@ SQLite com WAL mode e indexes de performance.
 | `users` | Usuários do painel (RBAC) |
 | `agent_profile` | Sysinfo, processos e reconhecimento de rede por agente |
 | `c2_settings` | Configurações persistentes (alertas Telegram, etc.) |
-| `audit_log` | Registro de ações dos operadores |
+| `tasks` + `system_logs` | Auditoria de tarefas e ações dos operadores |
 
 ---
 
@@ -392,8 +407,8 @@ SQLite com WAL mode e indexes de performance.
 ## 🚧 Roadmap — Em Desenvolvimento
 
 ### Alta Prioridade
-- **[ ] Fila Offline** — tasks marcadas como `pending_offline` entregues automaticamente ao agente ao reconectar, sem perda de comandos
-- **[ ] Retention Policy** — purge automático de tasks/resultados antigos, configurável na aba Config do painel
+- **[x] Fila Offline** — resultados pendentes são armazenados localmente e reenviados ao reconectar
+- **[x] Retention Policy** — purge automático de tasks/resultados antigos, configurável na aba Config do painel
 
 ### Staged Payload
 - **[ ] Agent Minimal** — novo target do Builder com capabilities essenciais (beacon, sysinfo, shell, screenshot, upgrade)
