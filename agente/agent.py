@@ -5287,7 +5287,7 @@ def run_threaded_task(target_function: callable, args: any, result_container: li
 # Em agent.py
 
 def main_loop():
-    write_internal_log("Entrando no loop principal (v3.1 - Híbrido)")
+    write_internal_log("Entrando no loop principal (v7.1 Stable)")
     
     active_threads = {}  # Dicionário para rastrear threads: {task_id: (thread, container)}
 
