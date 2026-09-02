@@ -104,7 +104,12 @@ class ArchitectureContractTests(unittest.TestCase):
 
         original_db_file = database.DB_FILE
         test_db = ROOT / ".architecture_contract.sqlite"
-        artifacts = [test_db, Path(f"{test_db}-wal"), Path(f"{test_db}-shm")]
+        artifacts = [
+            test_db,
+            Path(f"{test_db}-wal"),
+            Path(f"{test_db}-shm"),
+            Path(f"{test_db}-journal"),
+        ]
         try:
             for artifact in artifacts:
                 artifact.unlink(missing_ok=True)

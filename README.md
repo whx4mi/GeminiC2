@@ -364,6 +364,14 @@ SQLite com WAL mode e indexes de performance.
 
 ## 📜 Changelog
 
+### Manutenção do Builder — 2026-09-02
+- 🔧 PyInstaller e Nuitka alinhados ao interpretador que iniciou o Builder
+- 🔧 Diagnóstico antecipado de contexto, compilador e encoding de saída
+- 🧹 Limpeza restrita a imports não utilizados no próprio Builder; nenhuma funcionalidade removida
+- 🧪 Testes de contrato dos compiladores sem produzir executáveis
+- 📄 [Relatório técnico detalhado](docs/BUILDER_MAINTENANCE_2026-09-02.md)
+- ✅ [Checklist interativo PyInstaller/Nuitka](docs/manual-validation-checklist.html)
+
 ### v6.0.0 — Redirector OPSEC + Beacon Jitter (2026-07)
 - ✨ Redirector OPSEC via Cloudflare Worker (`redirector/worker.js`)
 - ✨ CDN Token (`X-Cdn-Token`) integrado no agente e no Builder

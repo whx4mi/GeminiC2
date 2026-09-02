@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeminiRAT — Checklist de validação</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #071018;
+      --surface: #0d1924;
+      --surface-2: #132230;
+      --border: #263a49;
+      --text: #e8f0f5;
+      --muted: #91a6b5;
+      --accent: #40c4d8;
+      --accent-2: #7de0b1;
+      --danger: #ff7d86;
+      --warning: #f5c26b;
+      --ok: #72d6a0;
+      --shadow: 0 16px 40px rgba(0, 0, 0, .28);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(64, 196, 216, .12), transparent 32rem),
+        var(--bg);
+      color: var(--text);
+      font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button, select, input[type="file"] { min-height: 42px; }
+
+    button {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .65rem .9rem;
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #041015; font-weight: 700; }
+    button.danger { color: var(--danger); }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: #09141d;
+      color: var(--text);
+      padding: .58rem .68rem;
+    }
+
+    textarea { min-height: 70px; resize: vertical; }
+    input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    code {
+      color: var(--accent-2);
+      background: rgba(125, 224, 177, .08);
+      padding: .08rem .32rem;
+      border-radius: 5px;
+    }
+
+    .shell { width: min(1480px, calc(100% - 28px)); margin: 0 auto; padding: 24px 0 60px; }
+    .hero { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; margin-bottom: 20px; }
+    .hero h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 3vw, 2.3rem); line-height: 1.15; }
+    .hero p { margin: 0; color: var(--muted); }
+    .save-state { color: var(--muted); white-space: nowrap; }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px;
+      margin-bottom: 18px;
+      background: rgba(7, 16, 24, .92);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar .spacer { flex: 1 1 auto; }
+    .file-button { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
+    .file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+    .notice {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--warning);
+      background: rgba(245, 194, 107, .08);
+      color: #f6deb2;
+      border-radius: 8px;
+    }
+
+    .overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .progress-card { padding: 16px; }
+    .progress-head { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 10px; }
+    .progress-head strong { font-size: 1.05rem; }
+    .progress-head span { color: var(--muted); }
+    .track { height: 10px; background: #071018; border-radius: 999px; overflow: hidden; }
+    .bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .2s ease; }
+    .counts { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; color: var(--muted); font-size: .88rem; }
+    .counts .fail { color: var(--danger); }
+
+    section.card { margin-bottom: 18px; overflow: hidden; }
+    section.card > header { padding: 16px 18px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+    section.card h2 { margin: 0; font-size: 1.08rem; }
+    section.card header p { margin: 4px 0 0; color: var(--muted); }
+    .section-body { padding: 16px 18px; }
+
+    .meta-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    label.field { display: grid; gap: 5px; color: var(--muted); font-size: .9rem; }
+    label.field.wide { grid-column: span 2; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td { border-bottom: 1px solid var(--border); padding: 10px; text-align: left; vertical-align: top; }
+    th { position: sticky; top: 68px; z-index: 10; background: #132230; color: var(--muted); font-size: .82rem; letter-spacing: .03em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    tr[data-status-filtered="true"], tr[data-search-filtered="true"] { display: none; }
+    td.item-title { min-width: 220px; }
+    td.item-title strong { display: block; color: var(--text); }
+    td.item-title small { display: block; color: var(--muted); margin-top: 4px; }
+    td.expected { min-width: 260px; color: var(--muted); }
+    td.run { width: 260px; min-width: 260px; }
+    td.run select { margin-bottom: 7px; }
+    td.run textarea { min-height: 64px; }
+
+    .mode {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(64, 196, 216, .10);
+      color: var(--accent);
+      font-size: .78rem;
+    }
+
+    .filters { display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; margin-bottom: 12px; align-items: end; }
+    .filters .result { color: var(--muted); align-self: center; white-space: nowrap; }
+
+    details { border-top: 1px solid var(--border); }
+    details:first-child { border-top: 0; }
+    summary { cursor: pointer; padding: 12px 0; color: var(--accent-2); }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #071018; padding: 12px; border-radius: 9px; color: #c9d8e2; }
+
+    .issue-grid { display: grid; gap: 12px; }
+    .issue {
+      display: grid;
+      grid-template-columns: 1fr 1fr 160px auto;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .issue textarea { grid-column: 1 / -2; }
+    .issue .remove { grid-column: -2; grid-row: 1 / span 2; align-self: start; }
+    .empty { color: var(--muted); padding: 6px 0; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 900px) {
+      .meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .issue { grid-template-columns: 1fr 1fr; }
+      .issue textarea, .issue .remove { grid-column: auto; grid-row: auto; }
+      .hero { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 16px, 1480px); padding-top: 14px; }
+      .overview, .meta-grid, .filters { grid-template-columns: 1fr; }
+      label.field.wide { grid-column: auto; }
+      .toolbar { position: static; }
+      .toolbar button, .file-button { width: 100%; justify-content: center; }
+      .toolbar .spacer { display: none; }
+      th { top: 0; }
+    }
+
+    @media print {
+      :root { color-scheme: light; --bg: #fff; --surface: #fff; --surface-2: #f4f6f8; --border: #ccd5db; --text: #15202a; --muted: #4b5d69; }
+      body { background: #fff; }
+      .toolbar, .filters, .remove, #add-issue { display: none !important; }
+      .card { box-shadow: none; break-inside: avoid; }
+      th { position: static; }
+      textarea, input, select { border-color: #aeb9c1; color: #15202a; background: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="hero">
+      <div>
+        <h1>Checklist de validação</h1>
+        <p>Comparação funcional entre PyInstaller e Nuitka · 52 comandos · salvamento local</p>
+      </div>
+      <div class="save-state" id="save-state" aria-live="polite">Pronto</div>
+    </div>
+
+    <div class="toolbar" aria-label="Ações do relatório">
+      <button type="button" class="primary" id="export-html">Gerar relatório HTML</button>
+      <button type="button" id="export-json">Exportar JSON</button>
+      <label class="file-button">
+        Importar relatório
+        <input type="file" id="import-json" accept="application/json,.json">
+      </label>
+      <button type="button" id="print-report">Imprimir / PDF</button>
+      <span class="spacer"></span>
+      <button type="button" class="danger" id="reset-all">Limpar preenchimento</button>
+    </div>
+
+    <p class="notice">
+      Use somente em laboratório autorizado e descartável. O smoke test operacional é limitado a
+      <code>sleep</code>; os demais comandos devem ser avaliados por contrato estático ou resposta mocada.
+      Não registre segredos ou conteúdo do <code>.env</code> nas observações.
+    </p>
+
+    <div class="overview" aria-label="Progresso das rodadas">
+      <div class="card progress-card" data-progress="pyinstaller">
+        <div class="progress-head"><strong>PyInstaller</strong><span class="percent">0%</span></div>
+        <div class="track" role="progressbar" aria-label="Progresso PyInstaller" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="bar"></div></div>
+        <div class="counts"></div>
+      </div>
+      <div class="card progress-card" data-progress="nuitka">
+        <div class="progress-head"><strong>Nuitka</strong><span class="percent">0%</span></div>
+        <div class="track" role="progressbar" aria-label="Progresso Nuitka" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="bar"></div></div>
+        <div class="counts"></div>
+      </div>
+    </div>
+
+    <section class="card">
+      <header><h2>Identificação</h2><p>Contexto comum e dados dos dois artefatos.</p></header>
+      <div class="section-body meta-grid" id="metadata-fields">
+        <label class="field">Responsável<input data-meta="tester" autocomplete="name"></label>
+        <label class="field">Data do teste<input type="date" data-meta="testDate"></label>
+        <label class="field wide">Commit / estado Git<input data-meta="gitState"></label>
+        <label class="field wide">Ambiente / observação geral<textarea data-meta="environment"></textarea></label>
+        <label class="field">Artefato PyInstaller<input data-meta="pyinstallerArtifact"></label>
+        <label class="field">Tamanho PyInstaller<input data-meta="pyinstallerSize"></label>
+        <label class="field wide">SHA-256 PyInstaller<input data-meta="pyinstallerHash"></label>
+        <label class="field">Artefato Nuitka<input data-meta="nuitkaArtifact"></label>
+        <label class="field">Tamanho Nuitka<input data-meta="nuitkaSize"></label>
+        <label class="field wide">SHA-256 Nuitka<input data-meta="nuitkaHash"></label>
+      </div>
+    </section>
+
+    <div id="checklist-sections"></div>
+
+    <section class="card" id="command-section">
+      <header><h2>Matriz completa de comandos</h2><p>Os 52 nomes foram conferidos com o dispatcher canônico do Agent.</p></header>
+      <div class="section-body">
+        <div class="filters">
+          <label class="field">Buscar comando<input id="command-search" type="search" placeholder="Ex.: sleep"></label>
+          <label class="field">Filtrar status
+            <select id="command-status-filter">
+              <option value="all">Todos</option>
+              <option value="pending">Com pendência</option>
+              <option value="ok">OK nos dois</option>
+              <option value="failed">Com falha</option>
+            </select>
+          </label>
+          <div class="result" id="filter-result" aria-live="polite"></div>
+        </div>
+        <div class="table-wrap"><table id="commands-table"></table></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <header><h2>Exemplos de respostas esperadas</h2><p>Referência do plano de controle; valores variáveis aparecem entre &lt; &gt;.</p></header>
+      <div class="section-body">
+        <details open>
+          <summary>Comando aceito e estados</summary>
+          <pre><code>{"status":"Comando enfileirado","task_id":"&lt;uuid&gt;"}
+
+pending -&gt; in_progress -&gt; completed
+pending -&gt; in_progress -&gt; failed       (data_type=error)
+pending -&gt; in_progress -&gt; timeout      (sem resultado no limite)</code></pre>
+        </details>
+        <details>
+          <summary>Comando inválido</summary>
+          <pre><code>HTTP 400
+{"error":"Comando '&lt;nome&gt;' não reconhecido ou não permitido."}</code></pre>
+        </details>
+        <details>
+          <summary>Agent inexistente</summary>
+          <pre><code>HTTP 404
+{"error":"Agente não encontrado"}</code></pre>
+        </details>
+        <details>
+          <summary>Cancelamento</summary>
+          <pre><code>{"status":"ok","task_id":"&lt;uuid&gt;","new_status":"cancelled"}</code></pre>
+        </details>
+        <details>
+          <summary>Smoke test sleep</summary>
+          <pre><code>Sleep de &lt;N&gt;s concluído.
+data_type: info
+estado final: completed</code></pre>
+        </details>
+      </div>
+    </section>
+
+    <section class="card">
+      <header><h2>Falhas e achados</h2><p>Registre somente dados sanitizados.</p></header>
+      <div class="section-body">
+        <div id="issues" class="issue-grid"></div>
+        <button type="button" id="add-issue">Adicionar achado</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const STORAGE_KEY = "geminirat-validation-report-v1";
+      const RUNS = ["pyinstaller", "nuitka"];
+      const STATUS_OPTIONS = [
+        ["pending", "Pendente"],
+        ["ok", "OK"],
+        ["failed", "Falha"],
+        ["na", "N/A"]
+      ];
+
+      const sections = [
+        {
+          id: "preparation",
+          title: "1. Preparação segura",
+          description: "Pré-condições para uma rodada reproduzível.",
+          items: [
+            ["isolated-lab", "Laboratório isolado e autorizado", "Sem acesso a ativos reais ou dados pessoais."],
+            ["snapshot", "Snapshot disponível", "Ambiente recuperável após o teste."],
+            ["env-present", ".env presente sem expor valores", "Variáveis obrigatórias presentes e não vazias."],
+            ["pip-check", "Dependências consistentes", "pip check: No broken requirements found."],
+            ["contract-tests", "Testes de contrato", "7 testes aprovados."],
+            ["worker-syntax", "Worker com sintaxe válida", "node --check termina com código 0."]
+          ]
+        },
+        {
+          id: "builder",
+          title: "2. Builder",
+          description: "Paridade, diagnóstico e produção do artefato.",
+          items: [
+            ["compiler-selected", "Compilador correto selecionado", "Estratégia esperada aparece no pipeline."],
+            ["venv-interpreter", "Builder iniciado pela .venv", "Compilador resolvido pelo mesmo sys.executable."],
+            ["valid-context", "Contexto de build válido", "Sem erro de diretório, entrada ou nome de saída."],
+            ["readable-output", "Saída legível", "Sem UnicodeDecodeError; bytes inválidos não interrompem o Builder."],
+            ["return-code", "Código de retorno preservado", "Falha aparece como erro; sucesso não é mascarado."],
+            ["artifact-created", "Artefato localizado", "Arquivo aparece em payloads/<nome_de_saida>."],
+            ["temporary-cleanup", "Diretório temporário limpo", ".build_<id> removido ao finalizar ou falhar."],
+            ["template-preserved", "Template original preservado", "agente/agent.py não é sobrescrito pelo Builder."]
+          ]
+        },
+        {
+          id: "transport",
+          title: "3. Registro e transporte",
+          description: "Smoke test em VM descartável, sem executar capacidades sensíveis.",
+          items: [
+            ["starts-cleanly", "Inicialização sem traceback", "Processo inicia sem erro de importação."],
+            ["authenticated-registration", "Registro autenticado", "Agent aparece no painel sem revelar segredos."],
+            ["online-state", "Estado inicial", "online após registro/check-in."],
+            ["stable-identity", "Identidade estável", "Check-ins atualizam o mesmo Agent."],
+            ["idle-beacon", "Beacon sem tarefa", "Controle sleep; fila permanece vazia."],
+            ["websocket-update", "Atualização WebSocket", "Lista e status atualizam sem recarregar."],
+            ["basic-reconnect", "Reconexão básica", "Após reinício controlado, o mesmo Agent volta a online."]
+          ]
+        },
+        {
+          id: "control-plane",
+          title: "4. Plano de controle",
+          description: "Validações negativas e máquina de estados.",
+          items: [
+            ["invalid-command", "Rejeição de comando inválido", "HTTP 400; nenhuma tarefa criada."],
+            ["missing-agent", "Agent inexistente", "HTTP 404; nenhuma tarefa criada."],
+            ["observer-denied", "Observer sem permissão de emissão", "HTTP 403; nenhuma tarefa criada."],
+            ["pending-created", "Criação da tarefa", "Resposta com task_id; estado pending."],
+            ["in-progress", "Entrega da tarefa", "Estado passa para in_progress."],
+            ["synthetic-success", "Resultado sintético de sucesso", "Estado completed."],
+            ["synthetic-error", "Resultado sintético de erro", "Estado failed."],
+            ["timeout-state", "Timeout sintético", "Estado timeout após o limite configurado."],
+            ["cancel-state", "Cancelamento permitido", "pending/in_progress passa para cancelled."],
+            ["cancel-terminal", "Cancelamento de estado terminal", "HTTP 409; estado não é alterado."]
+          ]
+        },
+        {
+          id: "parity",
+          title: "5. Paridade final",
+          description: "Compare as duas rodadas antes de aprovar.",
+          items: [
+            ["parity-registration", "Registro e check-in", "Mesmo contrato de transporte."],
+            ["parity-sleep", "Smoke test sleep", "Mesmo data_type=info e estado completed."],
+            ["parity-invalid", "Comando inválido", "HTTP 400 nas duas rodadas."],
+            ["parity-missing", "Agent inexistente", "HTTP 404 nas duas rodadas."],
+            ["parity-cancel", "Cancelamento", "Estado cancelled nas duas rodadas."],
+            ["parity-dispatch", "Dispatcher completo", "Whitelist e Agent sem diferenças."],
+            ["parity-imports", "Importações iniciais", "Nenhum módulo obrigatório ausente."],
+            ["parity-cleanup", "Limpeza do build", "Nenhum .build_<id> residual."]
+          ]
+        }
+      ];
+
+      const threaded = ["capture_audio", "decrypt_target", "encrypt", "network_scan", "run_exploit", "start_attack", "start_worm_mode"];
+      const synchronous = [
+        "ad_info", "amsi_patch", "browser_history", "clipboard", "clipboard_monitor", "clipboard_monitor_stop",
+        "cookies", "credential_manager", "credentials", "credentials_firefox", "crypto_wallets", "download",
+        "elevate", "env_tokens", "installed_software", "keylogger_start", "keylogger_stop", "kill",
+        "lateral_psexec", "network_recon", "network_shares", "password_managers", "persist", "processes",
+        "ransom_note", "rdp_credentials", "recent_files", "remote_exec", "revert_token", "scan_exploit",
+        "screenshot", "session_export", "set_beacon", "shell", "spawn", "ssh_keys", "start_listener",
+        "sysinfo", "token_impersonation", "upload", "vpn_configs", "webcam_snap", "wifi_passwords"
+      ];
+      const commands = [
+        { name: "sleep", type: "C", mode: "Manual", expected: "Sleep de <N>s concluído; data_type=info; completed." },
+        ...threaded.map(name => ({ name, type: "T", mode: "Contrato/mocado", expected: "Mapeado em THREADED_TASKS; resultado sintético leva a completed ou failed." })),
+        ...synchronous.map(name => ({ name, type: "S", mode: "Contrato/mocado", expected: "Mapeado em SYNC_TASKS; resultado sintético leva a completed ou failed." })),
+        { name: "cleanup", type: "N", mode: "Contrato estático; não executar", expected: "Mapeado em NO_RETURN_TASKS; não há send_result." }
+      ];
+
+      const defaultState = () => ({
+        schemaVersion: 1,
+        metadata: {},
+        checks: {},
+        issues: [],
+        updatedAt: null
+      });
+
+      let state = loadState();
+      let saveTimer = null;
+
+      function loadState() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          return parsed && parsed.schemaVersion === 1 ? parsed : defaultState();
+        } catch (_) {
+          return defaultState();
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function statusSelect(itemId, run) {
+        const current = state.checks[itemId]?.[run]?.status || "pending";
+        const options = STATUS_OPTIONS.map(([value, label]) => `<option value="${value}"${value === current ? " selected" : ""}>${label}</option>`).join("");
+        return `<select aria-label="Status ${run}" data-check-status="${itemId}" data-run="${run}">${options}</select>`;
+      }
+
+      function observation(itemId, run) {
+        const value = state.checks[itemId]?.[run]?.note || "";
+        return `<textarea aria-label="Observação ${run}" data-check-note="${itemId}" data-run="${run}" placeholder="Observação sanitizada">${escapeHtml(value)}</textarea>`;
+      }
+
+      function tableMarkup(items, commandTable = false) {
+        const head = `<thead><tr><th>Item</th><th>Esperado</th><th>PyInstaller</th><th>Nuitka</th></tr></thead>`;
+        const rows = items.map(item => {
+          const id = commandTable ? `command:${item.name}` : item[0];
+          const title = commandTable ? `<code>${escapeHtml(item.name)}</code><small>Tipo ${item.type}</small><span class="mode">${escapeHtml(item.mode)}</span>` : `<strong>${escapeHtml(item[1])}</strong>`;
+          const expected = commandTable ? item.expected : item[2];
+          const search = commandTable ? item.name.toLowerCase() : "";
+          return `<tr data-item-id="${escapeHtml(id)}" data-command-name="${escapeHtml(search)}">
+            <td class="item-title">${title}</td>
+            <td class="expected">${escapeHtml(expected)}</td>
+            <td class="run">${statusSelect(id, "pyinstaller")}${observation(id, "pyinstaller")}</td>
+            <td class="run">${statusSelect(id, "nuitka")}${observation(id, "nuitka")}</td>
+          </tr>`;
+        }).join("");
+        return `${head}<tbody>${rows}</tbody>`;
+      }
+
+      function renderSections() {
+        const container = document.getElementById("checklist-sections");
+        container.innerHTML = sections.map(section => `<section class="card" id="${section.id}">
+          <header><h2>${escapeHtml(section.title)}</h2><p>${escapeHtml(section.description)}</p></header>
+          <div class="section-body table-wrap"><table>${tableMarkup(section.items)}</table></div>
+        </section>`).join("");
+        document.getElementById("commands-table").innerHTML = tableMarkup(commands, true);
+      }
+
+      function bindStateInputs() {
+        document.querySelectorAll("[data-meta]").forEach(input => {
+          input.value = state.metadata[input.dataset.meta] || "";
+          input.addEventListener("input", () => {
+            state.metadata[input.dataset.meta] = input.value;
+            scheduleSave();
+          });
+        });
+
+        document.querySelectorAll("[data-check-status]").forEach(select => {
+          select.addEventListener("change", () => {
+            setCheck(select.dataset.checkStatus, select.dataset.run, "status", select.value);
+            updateProgress();
+            applyCommandFilters();
+          });
+        });
+
+        document.querySelectorAll("[data-check-note]").forEach(textarea => {
+          textarea.addEventListener("input", () => setCheck(textarea.dataset.checkNote, textarea.dataset.run, "note", textarea.value));
+        });
+      }
+
+      function setCheck(itemId, run, field, value) {
+        state.checks[itemId] ||= {};
+        state.checks[itemId][run] ||= { status: "pending", note: "" };
+        state.checks[itemId][run][field] = value;
+        scheduleSave();
+      }
+
+      function scheduleSave() {
+        document.getElementById("save-state").textContent = "Salvando…";
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          state.updatedAt = new Date().toISOString();
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          document.getElementById("save-state").textContent = `Salvo localmente às ${new Date().toLocaleTimeString("pt-BR")}`;
+        }, 180);
+      }
+
+      function allItemIds() {
+        return [
+          ...sections.flatMap(section => section.items.map(item => item[0])),
+          ...commands.map(command => `command:${command.name}`)
+        ];
+      }
+
+      function summaryFor(run) {
+        const statuses = allItemIds().map(id => state.checks[id]?.[run]?.status || "pending");
+        const counts = Object.fromEntries(STATUS_OPTIONS.map(([key]) => [key, statuses.filter(value => value === key).length]));
+        const completed = statuses.length - counts.pending;
+        return { total: statuses.length, completed, percent: Math.round((completed / statuses.length) * 100), counts };
+      }
+
+      function updateProgress() {
+        RUNS.forEach(run => {
+          const summary = summaryFor(run);
+          const card = document.querySelector(`[data-progress="${run}"]`);
+          card.querySelector(".percent").textContent = `${summary.percent}%`;
+          card.querySelector(".bar").style.width = `${summary.percent}%`;
+          const track = card.querySelector(".track");
+          track.setAttribute("aria-valuenow", String(summary.percent));
+          card.querySelector(".counts").innerHTML = `<span>${summary.completed}/${summary.total} preenchidos</span><span>OK ${summary.counts.ok}</span><span class="fail">Falhas ${summary.counts.failed}</span><span>N/A ${summary.counts.na}</span>`;
+        });
+      }
+
+      function applyCommandFilters() {
+        const query = document.getElementById("command-search").value.trim().toLowerCase();
+        const filter = document.getElementById("command-status-filter").value;
+        let visible = 0;
+        document.querySelectorAll("#commands-table tbody tr").forEach(row => {
+          const id = row.dataset.itemId;
+          const py = state.checks[id]?.pyinstaller?.status || "pending";
+          const nu = state.checks[id]?.nuitka?.status || "pending";
+          const searchFiltered = query && !row.dataset.commandName.includes(query);
+          const statusFiltered = filter === "pending" ? py !== "pending" && nu !== "pending"
+            : filter === "ok" ? !(py === "ok" && nu === "ok")
+            : filter === "failed" ? !(py === "failed" || nu === "failed")
+            : false;
+          row.dataset.searchFiltered = String(Boolean(searchFiltered));
+          row.dataset.statusFiltered = String(Boolean(statusFiltered));
+          if (!searchFiltered && !statusFiltered) visible += 1;
+        });
+        document.getElementById("filter-result").textContent = `${visible} de ${commands.length}`;
+      }
+
+      function renderIssues() {
+        const container = document.getElementById("issues");
+        if (!state.issues.length) {
+          container.innerHTML = '<div class="empty">Nenhum achado registrado.</div>';
+          return;
+        }
+        container.innerHTML = state.issues.map((issue, index) => `<div class="issue" data-issue-index="${index}">
+          <label class="field">Compilador<select data-issue-field="compiler">
+            <option value="PyInstaller"${issue.compiler === "PyInstaller" ? " selected" : ""}>PyInstaller</option>
+            <option value="Nuitka"${issue.compiler === "Nuitka" ? " selected" : ""}>Nuitka</option>
+            <option value="Ambos"${issue.compiler === "Ambos" ? " selected" : ""}>Ambos</option>
+          </select></label>
+          <label class="field">Etapa<input data-issue-field="stage" value="${escapeHtml(issue.stage)}"></label>
+          <label class="field">Severidade<select data-issue-field="severity">
+            ${["Baixa", "Média", "Alta", "Bloqueante"].map(value => `<option${issue.severity === value ? " selected" : ""}>${value}</option>`).join("")}
+          </select></label>
+          <label class="field">Descrição sanitizada<textarea data-issue-field="description">${escapeHtml(issue.description)}</textarea></label>
+          <button type="button" class="danger remove" data-remove-issue="${index}">Remover</button>
+        </div>`).join("");
+
+        container.querySelectorAll("[data-issue-field]").forEach(input => {
+          input.addEventListener("input", () => {
+            const index = Number(input.closest("[data-issue-index]").dataset.issueIndex);
+            state.issues[index][input.dataset.issueField] = input.value;
+            scheduleSave();
+          });
+        });
+        container.querySelectorAll("[data-remove-issue]").forEach(button => {
+          button.addEventListener("click", () => {
+            state.issues.splice(Number(button.dataset.removeIssue), 1);
+            scheduleSave();
+            renderIssues();
+          });
+        });
+      }
+
+      function addIssue() {
+        state.issues.push({ compiler: "Ambos", stage: "", severity: "Média", description: "" });
+        scheduleSave();
+        renderIssues();
+      }
+
+      function reportPayload() {
+        state.updatedAt = new Date().toISOString();
+        return {
+          ...state,
+          generatedAt: new Date().toISOString(),
+          summaries: Object.fromEntries(RUNS.map(run => [run, summaryFor(run)])),
+          checklistVersion: "2026-09-02"
+        };
+      }
+
+      function download(name, type, content) {
+        const url = URL.createObjectURL(new Blob([content], { type }));
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = name;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function timestampName() {
+        return new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z");
+      }
+
+      function exportJson() {
+        download(`geminirat-validation-${timestampName()}.json`, "application/json", JSON.stringify(reportPayload(), null, 2));
+      }
+
+      function reportRows(payload) {
+        const definitions = [
+          ...sections.flatMap(section => section.items.map(item => ({ id: item[0], title: item[1], expected: item[2], group: section.title }))),
+          ...commands.map(command => ({ id: `command:${command.name}`, title: command.name, expected: command.expected, group: "Matriz de comandos" }))
+        ];
+        return definitions.map(item => {
+          const py = payload.checks[item.id]?.pyinstaller || { status: "pending", note: "" };
+          const nu = payload.checks[item.id]?.nuitka || { status: "pending", note: "" };
+          return `<tr><td>${escapeHtml(item.group)}</td><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.expected)}</td><td>${escapeHtml(py.status)}</td><td>${escapeHtml(py.note)}</td><td>${escapeHtml(nu.status)}</td><td>${escapeHtml(nu.note)}</td></tr>`;
+        }).join("");
+      }
+
+      function exportHtml() {
+        const payload = reportPayload();
+        const issues = payload.issues.length ? payload.issues.map(issue => `<tr><td>${escapeHtml(issue.compiler)}</td><td>${escapeHtml(issue.stage)}</td><td>${escapeHtml(issue.severity)}</td><td>${escapeHtml(issue.description)}</td></tr>`).join("") : '<tr><td colspan="4">Nenhum achado registrado.</td></tr>';
+        const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório GeminiRAT</title><style>
+          body{font:14px/1.45 system-ui,sans-serif;margin:28px;color:#17232c}h1,h2{margin:.4em 0}p{margin:.35em 0}.summary{display:flex;gap:24px;flex-wrap:wrap;padding:12px 0}table{width:100%;border-collapse:collapse;margin:12px 0 24px}th,td{border:1px solid #cdd6dc;padding:7px;text-align:left;vertical-align:top}th{background:#eef2f4}code{overflow-wrap:anywhere}@media print{body{margin:8mm}tr{break-inside:avoid}}
+        </style></head><body><h1>Relatório de validação GeminiRAT</h1>
+        <p><strong>Gerado em:</strong> ${escapeHtml(new Date(payload.generatedAt).toLocaleString("pt-BR"))}</p>
+        <p><strong>Responsável:</strong> ${escapeHtml(payload.metadata.tester)}</p>
+        <p><strong>Data do teste:</strong> ${escapeHtml(payload.metadata.testDate)}</p>
+        <p><strong>Git:</strong> ${escapeHtml(payload.metadata.gitState)}</p>
+        <p><strong>Ambiente:</strong> ${escapeHtml(payload.metadata.environment)}</p>
+        <div class="summary"><div><strong>PyInstaller:</strong> ${payload.summaries.pyinstaller.percent}% · ${payload.summaries.pyinstaller.counts.failed} falhas</div><div><strong>Nuitka:</strong> ${payload.summaries.nuitka.percent}% · ${payload.summaries.nuitka.counts.failed} falhas</div></div>
+        <h2>Artefatos</h2><table><thead><tr><th>Compilador</th><th>Arquivo</th><th>Tamanho</th><th>SHA-256</th></tr></thead><tbody>
+        <tr><td>PyInstaller</td><td>${escapeHtml(payload.metadata.pyinstallerArtifact)}</td><td>${escapeHtml(payload.metadata.pyinstallerSize)}</td><td><code>${escapeHtml(payload.metadata.pyinstallerHash)}</code></td></tr>
+        <tr><td>Nuitka</td><td>${escapeHtml(payload.metadata.nuitkaArtifact)}</td><td>${escapeHtml(payload.metadata.nuitkaSize)}</td><td><code>${escapeHtml(payload.metadata.nuitkaHash)}</code></td></tr></tbody></table>
+        <h2>Resultados</h2><table><thead><tr><th>Grupo</th><th>Item</th><th>Esperado</th><th>PyInstaller</th><th>Observação</th><th>Nuitka</th><th>Observação</th></tr></thead><tbody>${reportRows(payload)}</tbody></table>
+        <h2>Falhas e achados</h2><table><thead><tr><th>Compilador</th><th>Etapa</th><th>Severidade</th><th>Descrição</th></tr></thead><tbody>${issues}</tbody></table>
+        </body></html>`;
+        download(`geminirat-validation-report-${timestampName()}.html`, "text/html", html);
+      }
+
+      function importJson(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const imported = JSON.parse(String(reader.result));
+            if (imported.schemaVersion !== 1 || typeof imported.checks !== "object") throw new Error("Formato incompatível");
+            state = {
+              schemaVersion: 1,
+              metadata: imported.metadata || {},
+              checks: imported.checks || {},
+              issues: Array.isArray(imported.issues) ? imported.issues : [],
+              updatedAt: imported.updatedAt || null
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            initialize();
+            document.getElementById("save-state").textContent = "Relatório importado";
+          } catch (error) {
+            alert(`Não foi possível importar: ${error.message}`);
+          }
+        };
+        reader.readAsText(file, "utf-8");
+      }
+
+      function resetAll() {
+        if (!confirm("Limpar todo o preenchimento salvo neste navegador?")) return;
+        state = defaultState();
+        localStorage.removeItem(STORAGE_KEY);
+        initialize();
+        document.getElementById("save-state").textContent = "Preenchimento limpo";
+      }
+
+      function initialize() {
+        renderSections();
+        bindStateInputs();
+        renderIssues();
+        updateProgress();
+        applyCommandFilters();
+      }
+
+      document.getElementById("command-search").addEventListener("input", applyCommandFilters);
+      document.getElementById("command-status-filter").addEventListener("change", applyCommandFilters);
+      document.getElementById("add-issue").addEventListener("click", addIssue);
+      document.getElementById("export-json").addEventListener("click", exportJson);
+      document.getElementById("export-html").addEventListener("click", exportHtml);
+      document.getElementById("print-report").addEventListener("click", () => window.print());
+      document.getElementById("reset-all").addEventListener("click", resetAll);
+      document.getElementById("import-json").addEventListener("change", event => importJson(event.target.files[0]));
+
+      initialize();
+    })();
+  </script>
+</body>
+</html>

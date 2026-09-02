@@ -1,10 +1,8 @@
 import shutil
 import questionary
-import base64
-import json
 from pathlib import Path
 from strategies.stager import run_stager_interactive
-from strategies.signing import CodeSigningStrategy, NullSignature
+from strategies.signing import CodeSigningStrategy
 from strategies.mutation import LoaderPackingStrategy
 from rich.console import Console
 from rich.panel import Panel 

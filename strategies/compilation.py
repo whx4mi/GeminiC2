@@ -1,15 +1,43 @@
 # strategies/compilation.py
 
+import importlib.util
+import locale
 import os
-import sys
-import platform
 import subprocess
-import cv2
+import sys
+
 from .base import BuildContext, CompilationStrategy
+
+
+def _require_compiler_module(module_name: str, display_name: str) -> None:
+    """Confirma que o compilador pertence ao mesmo Python que iniciou o Builder."""
+    if importlib.util.find_spec(module_name) is None:
+        raise RuntimeError(
+            f"{display_name} não está instalado no interpretador atual: {sys.executable}"
+        )
+
+
+def _output_encoding() -> str:
+    """Retorna um encoding tolerante ao console efetivo do host."""
+    return sys.stdout.encoding or locale.getpreferredencoding(False) or "utf-8"
+
+
+def _validate_compilation_context(context: BuildContext) -> None:
+    """Falha cedo com um diagnóstico claro para contextos incompletos."""
+    if context.build_dir is None:
+        raise RuntimeError("Diretório temporário de build não foi inicializado.")
+    if context.entry_script_path is None or not context.entry_script_path.is_file():
+        raise RuntimeError("Script de entrada do build não foi preparado.")
+    if not str(context.config.get("output", "")).strip():
+        raise RuntimeError("Nome do artefato de saída não foi informado.")
+
 
 class PyInstallerCompilation(CompilationStrategy):
     def execute(self, context: BuildContext) -> BuildContext:
-        command = ['pyinstaller', '--clean', '--onefile', 
+        _validate_compilation_context(context)
+        _require_compiler_module("PyInstaller", "PyInstaller")
+
+        command = [sys.executable, '-m', 'PyInstaller', '--clean', '--onefile',
                    f'--distpath={context.build_dir / "dist"}', 
                    f'--workpath={context.build_dir / "build"}', 
                    f'--name={context.config["output"]}']
@@ -62,12 +90,13 @@ class PyInstallerCompilation(CompilationStrategy):
         for pkg in collect_all_pkgs:
             command.extend(['--collect-all', pkg])
 
-        try:
-            cv2_path = os.path.dirname(cv2.__file__)
+        cv2_spec = importlib.util.find_spec('cv2')
+        if cv2_spec and cv2_spec.origin:
+            cv2_path = os.path.dirname(cv2_spec.origin)
             separator = os.pathsep
             command.append(f'--add-binary={cv2_path}{separator}cv2')
-        except ImportError:
-            # Se não encontrar cv2, loga o erro mas tenta prosseguir
+        else:
+            # Se não encontrar cv2, loga o erro mas tenta prosseguir.
             print("[AVISO] OpenCV não encontrado no ambiente do compilador.")
 
         # Adiciona argumentos extras definidos pelo usuário no Builder.py
@@ -77,7 +106,14 @@ class PyInstallerCompilation(CompilationStrategy):
         command.append(str(context.entry_script_path))
         
         # Execução com captura de logs para facilitar o seu debug
-        result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8')
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding=_output_encoding(),
+            errors='replace',
+            check=False,
+        )
         if result.returncode != 0:
             raise RuntimeError(f"PyInstaller falhou:\n{result.stderr}")
             
@@ -91,6 +127,9 @@ class NuitkaCompilation(CompilationStrategy):
     Estratégia de compilação usando Nuitka, com feedback em tempo real e sintaxe compatível.
     """
     def execute(self, context: BuildContext) -> BuildContext:
+        _validate_compilation_context(context)
+        _require_compiler_module("nuitka", "Nuitka")
+
         command = [
             sys.executable, '-m', 'nuitka', 
             '--onefile',
@@ -120,7 +159,7 @@ class NuitkaCompilation(CompilationStrategy):
         # Nuitka imprime paths usando esse encoding — não UTF-8.
         # sys.stdout.encoding captura o encoding real do terminal;
         # fallback para utf-8 em Linux/Mac onde nao ha esse problema.
-        _enc = sys.stdout.encoding or 'utf-8'
+        _enc = _output_encoding()
 
         try:
             process = subprocess.Popen(
